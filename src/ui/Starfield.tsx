@@ -17,13 +17,13 @@ export function Starfield({ reducedMotion }: { reducedMotion: boolean }) {
       w = window.innerWidth; h = window.innerHeight;
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       const rnd = mulberry32(42);
-      const n = Math.round((w * h) / 1700);
+      const n = Math.round((w * h) / 1000);
       stars = Array.from({ length: n }, () => {
-        const bright = rnd() < 0.06;
+        const bright = rnd() < 0.1;
         return {
           x: rnd() * w, y: rnd() * h * 1.4,
-          r: bright ? 1.0 + rnd() * 1.0 : 0.45 + rnd() * 0.65,
-          a: bright ? 0.75 + rnd() * 0.25 : 0.3 + rnd() * 0.5,
+          r: bright ? 1.1 + rnd() * 1.1 : 0.55 + rnd() * 0.7,
+          a: bright ? 0.85 + rnd() * 0.15 : 0.45 + rnd() * 0.45,
           f: 0.3 + rnd() * 1.4, ph: rnd() * Math.PI * 2,
           tint: tints[Math.floor(rnd() * tints.length)],
           depth: 0.02 + rnd() * 0.08,
@@ -42,8 +42,8 @@ export function Starfield({ reducedMotion }: { reducedMotion: boolean }) {
         g.fillStyle = `rgba(${s.tint},${(s.a * tw).toFixed(3)})`;
         g.beginPath(); g.arc(s.x, y, s.r, 0, Math.PI * 2); g.fill();
         if (s.r > 1.2) {
-          g.fillStyle = `rgba(${s.tint},${(0.06 * tw).toFixed(3)})`;
-          g.beginPath(); g.arc(s.x, y, s.r * 4, 0, Math.PI * 2); g.fill();
+          g.fillStyle = `rgba(${s.tint},${(0.05 * tw).toFixed(3)})`;
+          g.beginPath(); g.arc(s.x, y, s.r * 2.6, 0, Math.PI * 2); g.fill();
         }
       }
     };
