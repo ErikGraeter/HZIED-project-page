@@ -17,7 +17,7 @@ export function Starfield({ reducedMotion }: { reducedMotion: boolean }) {
       w = window.innerWidth; h = window.innerHeight;
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       const rnd = mulberry32(42);
-      const n = Math.round((w * h) / 2600);
+      const n = Math.round((w * h) / 700);
       stars = Array.from({ length: n }, () => {
         const bright = rnd() < 0.06;
         return {
