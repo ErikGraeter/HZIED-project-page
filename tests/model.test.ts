@@ -146,5 +146,8 @@ describe('storyboard', () => {
       expect(res.observable[h.planet].steam).toBe(h.kind === 'hot-steam');
     }
     for (const c of [...f.cold, ...f.lineup]) expect(res.observable[c].S_abs).toBeLessThanOrEqual(280);
+    // the 3D hot side shows only inflating planets whenever envelopes exist
+    expect(f.hot.length).toBeGreaterThanOrEqual(3);
+    expect(f.hot.every((h) => h.kind === 'hot-steam')).toBe(true);
   });
 });

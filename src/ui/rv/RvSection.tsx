@@ -136,14 +136,19 @@ function RvSectionInner({ rv, reducedMotion }: { rv: RvBlock; reducedMotion: boo
     return () => { io.disconnect(); timers.current.forEach(clearTimeout); };
   }, [reducedMotion]);
 
-  // example planet for the RV animation: the median-K planet of the P5 sample
-  const demoBase = useMemo(() => {
+  // example planets for the RV animation, both from the predicted P5 sample:
+  // the median-K planet (typical) and the largest-K planet (strongest signal)
+  const examples = useMemo(() => {
     const ks = primary.map((i) => ({ i, K: semiAmplitude(rv.planets.M[i], rv.planets.P[i], rv.planets.M_st[i], 0, rv.k_prefactor_mps) }))
       .sort((a, b) => a.K - b.K);
-    const i = ks[Math.floor(ks.length / 2)].i;
-    return { Mp: +rv.planets.M[i].toFixed(2), P: +rv.planets.P[i].toFixed(1), Mst: +rv.planets.M_st[i].toFixed(2) };
+    const pick = (i: number) => ({ Mp: +rv.planets.M[i].toFixed(2), P: +rv.planets.P[i].toFixed(1), Mst: +rv.planets.M_st[i].toFixed(2) });
+    return { typical: pick(ks[Math.floor(ks.length / 2)].i), strongest: pick(ks[ks.length - 1].i) };
   }, [rv, primary]);
-  const [demoPl, setDemoPl] = useState(demoBase);
+  const [demoPl, setDemoPl] = useState(examples.typical);
+  const exampleOf = (['typical', 'strongest'] as const).find((k) => {
+    const e = examples[k];
+    return e.Mp === demoPl.Mp && e.P === demoPl.P && e.Mst === demoPl.Mst;
+  });
   const demo = { ...demoPl, sigmaRV: params.sigmaRV, nRV: params.nRV, e: params.e, pref: rv.k_prefactor_mps };
   const K = semiAmplitude(demo.Mp, demo.P, demo.Mst, demo.e, demo.pref);
   const sK = sigmaK(params.sigmaRV, params.nRV);
@@ -155,7 +160,7 @@ function RvSectionInner({ rv, reducedMotion }: { rv: RvBlock; reducedMotion: boo
   return (
     <section className="section rv-section" aria-labelledby="rv">
       <div className="section-head">
-        <div className="section-num">04 — RV FOLLOW-UP</div>
+        <div className="section-num">04 · RV follow-up</div>
         <div>
           <h2 id="rv">Weighing PLATO's planets</h2>
           <p className="lede">PLATO measures how large a planet is. Its bulk density — and with it the HZIED in density space — also needs its mass, which only ground-based radial-velocity follow-up can provide.</p>
@@ -167,11 +172,16 @@ function RvSectionInner({ rv, reducedMotion }: { rv: RvBlock; reducedMotion: boo
 
       {/* ── Part 1: the RV measurement ─────────────────────────────────── */}
       <div className="rv-grid">
-        <div className="card rv-anim-card">
-          <h4>A planet tugs on its star — ESPRESSO sees the star move</h4>
-          <p className="card-sub">Example: a typical P5 planet (median RV signal of the predicted sample) observed with ESPRESSO at ESO's VLT</p>
+        <figure className="figure card rv-anim-card">
+          <h4>A planet tugs on its star — ESPRESSO measures the star's motion</h4>
+          <p className="card-sub">A P5 planet observed with ESPRESSO at ESO's VLT. Each exposure adds one velocity point; the fit and the planet mass tighten as points accumulate.</p>
+          <div className="seg rv-example" role="group" aria-label="Example planet">
+            <button aria-pressed={exampleOf === 'typical'} onClick={() => setDemoPl(examples.typical)}>Typical P5 planet (median K)</button>
+            <button aria-pressed={exampleOf === 'strongest'} onClick={() => setDemoPl(examples.strongest)}>Strongest P5 signal</button>
+          </div>
           <RvOrbitFigure demo={demo} reducedMotion={reducedMotion} />
-        </div>
+          <figcaption>One simulated campaign of N_RV epochs at random times. Each point is the true velocity plus Gaussian noise of σ_RV; the amplitude is fitted with the orbital phase fixed by the transits, so σ_K → √(2/N_RV) σ_RV. When K is smaller than σ_RV, a single point says little — only many epochs pin down the mass.</figcaption>
+        </figure>
         <div className="rv-side">
           <div className="prose">
             <p><strong>Radius from PLATO.</strong> A transit dims the star by ΔF/F ≈ (R_p/R⋆)², so photometry gives the radius — for P5 stars to about {Math.round(rv.sigma_R * 100)} %.</p>
@@ -200,7 +210,7 @@ function RvSectionInner({ rv, reducedMotion }: { rv: RvBlock; reducedMotion: boo
         <p>Each planet's measured density is divided by the density of a rock-only planet at the closest point of a rocky mass–radius relation. By default this is the pure-rock (MgSiO₃) relation of Zeng et al. (2016) on which the simulated planets are built, so a bare rocky planet has ρ_norm ≈ 1. The <em>normalized density</em> removes the self-compression trend; a steam envelope pushes it below 1. With measured masses and radii, the projection itself is uncertain, so the uncertainties below come from Monte Carlo draws that re-project every measured planet.</p>
       </div>
 
-      <div className="rv-controls card" role="group" aria-label="RV follow-up scenario">
+      <div className="rv-controls" role="group" aria-label="RV follow-up scenario">
         <div className="seg" role="group" aria-label="Scenario shown in the density plot">
           <button aria-pressed={scenario === 'optimistic'} onClick={() => setScenario('optimistic')}><i className="lg-dot" style={{ background: SCEN_COLORS.optimistic }} /> Optimistic · σ_M/M = {pct(params.optFrac)}</button>
           <button aria-pressed={scenario === 'pessimistic'} onClick={() => setScenario('pessimistic')}><i className="lg-dot" style={{ background: SCEN_COLORS.pessimistic }} /> Pessimistic · RV-based</button>
@@ -223,7 +233,7 @@ function RvSectionInner({ rv, reducedMotion }: { rv: RvBlock; reducedMotion: boo
 
       <div className="cols rv-cols">
         <div ref={figRef}>
-          <div className="card">
+          <figure className="figure card">
             <div className="step-row">
               {STEPS.map((s, k) => (
                 <button key={s} className={`step-chip${k === step ? ' on' : ''}${k < step ? ' done' : ''}`} onClick={() => { timers.current.forEach(clearTimeout); setStep(k); }}>
@@ -244,7 +254,7 @@ function RvSectionInner({ rv, reducedMotion }: { rv: RvBlock; reducedMotion: boo
               {step < 4 ? `The predicted P5 sample (seed ${rv.primary_seed}, ${primary.length} planets) in true values.`
                 : `${scenario === 'optimistic' ? 'Optimistic' : 'Pessimistic'} follow-up, N = ${nShow}${nShow > primary.length ? ' (incl. forecast planets)' : ''}: one representative simulated measurement (median of 31 noise draws), error bars = Monte Carlo spread of ρ_norm.`}
             </p>
-          </div>
+          </figure>
         </div>
         <SignificanceFigure opt={curves.opt} pess={curves.pess} nul={curves.nul} nShow={nShow} setN={setNShow}
           primaryN={primary.length} maxRealization={maxRealization} poolN={n} n3={n3} progress={curves.progress} />

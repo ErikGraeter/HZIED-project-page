@@ -109,7 +109,7 @@ export function SignificanceFigure(p: Props) {
           {hp && Number.isFinite(hp.q50) && <circle cx={x(hp.n)} cy={y(hp.q50)} r="4" fill={SCEN_COLORS.pessimistic} stroke="#0b1020" strokeWidth="2" />}
           {ho && hp && (
             <g transform={`translate(${Math.max(m.l + 4, Math.min(W - m.r - 254, x(hN) + 262 > W - m.r ? x(hN) - 262 : x(hN) + 10))} ${m.t + 22})`}>
-              <rect width="252" height="66" rx="8" fill="rgba(8,11,22,0.95)" stroke="rgba(255,255,255,0.14)" />
+              <rect width="252" height="66" rx="2" fill="rgba(6,8,13,0.96)" stroke="rgba(255,255,255,0.14)" />
               <text className="lbl-strong" x="10" y="17">N = {ho.n}{ho.n > p.maxRealization ? ' (forecast)' : ''}</text>
               <rect x="10" y="27" width="8" height="8" rx="2" fill={SCEN_COLORS.optimistic} />
               <text className="lbl" x="24" y="35">optimistic</text>

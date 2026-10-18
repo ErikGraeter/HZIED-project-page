@@ -11,7 +11,7 @@ The hero section is a continuously looping, synchronised animation:
 
 | Left — 3D planet (three.js, custom GLSL) | Right — radius vs. absorbed flux (Canvas) |
 |---|---|
-| A rocky planet rotates; for hot-side planets its oceans evaporate, the surface heats and a steam envelope grows from the rocky radius to the model transit radius (rings mark both; the envelope is drawn ×3 thicker by default and labelled as such). On the cold side, a small and a large planet are followed by a line-up of five cold planets spanning the radius distribution, drawn to scale. | A ghost marker tracks the planet's radius as it inflates; the planet then flies into its point. The hot side fills with points (inflation stems), the threshold draws in, the cold side fills, binned means reveal the step. Then 50 red posterior draws of the step model (free threshold) converge as the survey grows, and the best fit is selected. |
+| A rocky planet rotates; the hot side features only planets that inflate (the non-inflating hot planets remain in the plot and in the evidence as open rings; they are featured only if no planet has an envelope, e.g. f_rgh = 0). For these planets the oceans evaporate, the surface heats and a steam envelope grows from the rocky radius to the model transit radius (rings mark both; the envelope is drawn ×3 thicker by default and labelled as such). On the cold side, a small and a large planet are followed by a line-up of five cold planets spanning the radius distribution, drawn to scale. | A ghost marker tracks the planet's radius as it inflates; the planet then flies into its point. The hot side fills with points (inflation stems), the threshold draws in, the cold side fills, binned means reveal the step. Then 50 red posterior draws of the step model (free threshold) converge as the survey grows, and the best fit is selected. The H0 line (dashed) and the draws are identified by the legend; only the best fit carries a direct label. |
 
 Everything is driven by one clock and one pure scene function
 (`src/timeline/storyboard.ts → sceneAt(t)`), so the sequence can be paused,
@@ -81,7 +81,7 @@ folder; if it is missing, `launch.command` installs it with a local cache
 | Steam-inflated transit radii, which hot planets inflate | **Model output** — `bioverse/custom.py::magma_ocean_agni_updated` (AGNI+PALEOS steam table, Boer, Nicholls & Lichtenberg 2025; Dorn & Lichtenberg 2021 correction) and the pipeline's seeded draws, re-implemented in `src/model/inflation.ts` and verified against the pipeline (`tests/model.test.ts`) |
 | Observable cuts | pipeline `_observable_cuts`: transiting, depth ≥ 80 ppm, 0.5–5 M⊕, R > 0.75 R⊕, 10 ≤ S_abs ≤ 2000 W m⁻² |
 | Survey arrival order, N subsample, optional radius noise | **Illustrative** — seeded in the browser |
-| ln K, 50 posterior draws, best fit, verdicts | **Toy model** computed live (see below) — *not* thesis results |
+| ln ΔZ, 50 posterior draws, best fit, verdicts | **Toy model** computed live (see below) — *not* thesis results |
 | 3D terrain, oceans, clouds, colours | **Visual** — procedural. Planets are drawn to scale relative to each other; the steam envelope is drawn ×3 thicker than the model by default (labelled on screen, adjustable). The plot always shows model radii. The host-star light colour follows T_eff. |
 | Outgoing-radiation figure | **Schematic** after Goldblatt et al. (2013) |
 
@@ -98,7 +98,7 @@ Computed from exactly the planets shown (`src/model/evidence.ts`):
 The means are integrated analytically, σ numerically, and S_thresh exactly (the
 likelihood only changes when the threshold crosses a planet, so the integral
 is a sum over the intervals between sorted fluxes; a unit test checks it
-against brute-force integration). ln K = ln Z_H1 − ln Z_H0 is therefore exact
+against brute-force integration). ln ΔZ = ln Z_H1 − ln Z_H0 is therefore exact
 for this model. The 50 red lines are draws from the same posterior — as the
 50 posterior draws in the thesis Fig. 5 (`plot_fig5`, `n_draws=50`) — sampled
 with fixed random numbers so they evolve smoothly as the survey grows; the
@@ -106,10 +106,10 @@ selected **best fit** is the posterior-median threshold with the side means
 of that split. The thesis itself fits the Schlecker et al. (2024) step model
 with nested sampling (dynesty), whose evidence values differ.
 
-At the fiducial setting: Artificial population (1786 planets) ln K ≈ +20.8,
+At the fiducial setting: Artificial population (1786 planets) ln ΔZ ≈ +20.8,
 best-fit S_thresh ≈ 253 W m⁻² (68 %: 221–280); PLATO targets (211 planets)
-ln K ≈ −1.1, threshold unconstrained (90–400 W m⁻²). Null test f_rgh = 0 on
-the Artificial population: ln K ≈ −2.0.
+ln ΔZ ≈ −1.1, threshold unconstrained (90–400 W m⁻²). Null test f_rgh = 0 on
+the Artificial population: ln ΔZ ≈ −2.0.
 
 ---
 
@@ -120,9 +120,19 @@ planetary mass → normalized density → HZIED detection significance:
 
 1. **RV explainer** (animated): a P5 planet and its star orbit the barycentre;
    the star's line-of-sight velocity Doppler-shifts its spectrum as recorded by
-   ESPRESSO at ESO's VLT; the RV curve accumulates measurements with σ_RV error
-   bars. K, σ_K and σ_M/M are exact for the chosen planet (sliders); wobble and
-   line shifts are exaggerated.
+   ESPRESSO at ESO's VLT. A measurement campaign of N_RV epochs plays out: each
+   exposure adds one velocity (true value + N(0, σ_RV)) at the orbital phase of
+   that moment, folded on the period known from the transits; phase-binned
+   means (±σ_RV/√n) show the sinusoid emerging from the noise; the
+   semi-amplitude is fitted live by linear least squares with the phase fixed
+   (σ_K̂ = σ_RV/√Σcos²φ → √(2/N_RV) σ_RV), and the implied mass M̂ ± σ_M is
+   shown on a gauge against the true mass. A signal-vs-noise bar compares K
+   with σ_RV on the plot's velocity scale. Two example planets from the
+   predicted sample: the median-K planet and the largest-K planet. The
+   campaign is the representative one of 31 seeded campaigns (median of the
+   largest standardized deviation |K̂ − K|/σ_K̂ along the run). K, σ_K and σ_M/M
+   are exact for the chosen planet (sliders); wobble and line shifts are
+   exaggerated.
 2. **Normalized density** (five-step morph): P5 planets in mass–radius space →
    orthogonal projection onto a Zeng+2016 rocky relation
    (`mr_reference.project_onto_curve`) → ρ_norm = ρ/ρ_ref → ρ_norm versus

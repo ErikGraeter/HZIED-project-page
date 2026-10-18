@@ -15,8 +15,9 @@
 // The means are integrated analytically (Gaussian likelihood × uniform prior →
 // normal CDFs), σ numerically on a log grid, and S_thresh exactly: the
 // likelihood only changes when the threshold crosses a planet, so the S_thresh
-// integral is a sum over the intervals between sorted fluxes.  ln K =
-// ln Z_H1 − ln Z_H0 is therefore exact for this model and the planets shown.
+// integral is a sum over the intervals between sorted fluxes.  ln ΔZ =
+// ln Z_H1 − ln Z_H0 (stored in the `lnK` fields) is therefore exact for this
+// model and the planets shown.
 // Posterior draws of (S_thresh, μ_hot, μ_cold) are sampled from the same
 // posterior with a fixed set of random numbers, so they evolve smoothly as the
 // sample grows.
@@ -140,7 +141,7 @@ export function compareSample(planets: PlanetLike[], S_thresh: number): Comparis
 }
 
 /**
- * Sequential evidence: ln K and posterior summaries after each of the first
+ * Sequential evidence: ln ΔZ and posterior summaries after each of the first
  * n planets (n = 1 … N) in the given (survey arrival) order.
  */
 export function sequentialEvidence(planets: PlanetLike[], S_thresh: number): Comparison[] {

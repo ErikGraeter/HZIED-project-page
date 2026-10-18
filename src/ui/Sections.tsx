@@ -41,7 +41,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
     <main>
       {/* ── 1. Physics ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="physics">
-        <SectionHead num="01 — PHYSICS" id="physics" title="Runaway greenhouse, inflated planets"
+        <SectionHead num="01 · Physics" id="physics" title="Runaway greenhouse, inflated planets"
           lede="A rocky planet that absorbs more starlight than its water atmosphere can radiate away loses its oceans to a hot steam envelope — and looks bigger in transit." />
         <div className="cols">
           <div className="prose">
@@ -61,7 +61,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
 
       {/* ── 2. Statistical signature ─────────────────────────────────────── */}
       <section className="section" aria-labelledby="signature">
-        <SectionHead num="02 — SIGNATURE" id="signature" title="From single planets to a population step"
+        <SectionHead num="02 · Signature" id="signature" title="From single planets to a population step"
           lede="A 5–15 % radius change is smaller than the natural spread of rocky planets. No single planet proves anything — but many planets do." />
         <div className="cols">
           <RadiusDistributions planets={model.planets} S_thresh={model.params.S_thresh} />
@@ -72,7 +72,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
             <div className="stat-row">
               <div className="stat"><div className="k">Hot planets with steam</div><div className="v">{hot.filter((p) => p.steam).length}<small>/ {hot.length}</small></div></div>
               <div className="stat"><div className="k">Mean radius shift (hot)</div><div className="v">{signed(dTr - dRock, 3)}<small>R⊕</small></div></div>
-              <div className="stat"><div className="k">Toy ln K</div><div className="v">{signed(model.fit.lnK, 1)}</div></div>
+              <div className="stat"><div className="k">Toy ln ΔZ</div><div className="v">{signed(model.fit.lnK, 1)}</div></div>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
 
       {/* ── 3. PLATO ─────────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="plato">
-        <SectionHead num="03 — PLATO" id="plato" title="Testing the HZIED with PLATO"
+        <SectionHead num="03 · PLATO" id="plato" title="Testing the HZIED with PLATO"
           lede="ESA's PLATO mission will find small planets around bright stars, measure their radii to a few per cent and enable mass measurements — the sample this test needs." />
         <div className="cols">
           <div className="prose">
@@ -101,7 +101,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
                 <div className="stat-row">
                   <div className="stat"><div className="k">Planets</div><div className="v">{sm.n_observable || ev.n}</div></div>
                   <div className="stat"><div className="k">Hot / cold</div><div className="v">{sm.n_hot}<small>/ {sm.n_cold}</small></div></div>
-                  <div className="stat"><div className="k">Toy ln K</div><div className="v">{signed(ev.fit.lnK, 1)}</div></div>
+                  <div className="stat"><div className="k">Toy ln ΔZ</div><div className="v">{signed(ev.fit.lnK, 1)}</div></div>
                 </div>
                 <p className="card-sub" style={{ marginTop: 10, marginBottom: 0 }}>
                   {Object.keys(ev.bySrc).length > 1
@@ -120,7 +120,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
 
       {/* ── 5. Methods ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="methods">
-        <SectionHead num="05 — METHODS" id="methods" title="Research & methodology"
+        <SectionHead num="05 · Methods" id="methods" title="Research & methodology"
           lede="Population synthesis with Bioverse, a physical inflation model, realistic survey selection, and Bayesian hypothesis testing." />
         <div className="pipeline">
           <div className="pipe-step"><div className="n">01 · GENERATOR</div><h4>Stars → planets</h4><p>Host stars from Gaia (GCNS) or the PLATO Input Catalogue; planets from Bergsten et al. (2022) occurrence rates; masses and rocky radii from Zeng et al. (2016). <code>create_planets_bergsten</code></p></div>
@@ -141,7 +141,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
                 <tr><td>Planet masses, rocky radii, absorbed flux, host stars</td><td><span className="tag real">model output</span> Bioverse populations ({data.samples.map((s) => s.meta.raw_parquet).join(', ')})</td></tr>
                 <tr><td>Steam-inflated transit radii, inflated subset</td><td><span className="tag real">model output</span> pipeline inflation model and its seeded draws, verified in the browser port</td></tr>
                 <tr><td>Survey arrival order, N subsample, radius noise</td><td><span className="tag toy">illustrative</span> seeded in the browser (seed {fid.seed})</td></tr>
-                <tr><td>ln K, posterior draws, best fit, verdicts</td><td><span className="tag toy">toy model</span> computed live; not thesis results</td></tr>
+                <tr><td>ln ΔZ, posterior draws, best fit, verdicts</td><td><span className="tag toy">toy model</span> computed live; not thesis results</td></tr>
                 <tr><td>3D terrain, oceans, clouds, colours</td><td><span className="tag vis">visual</span> procedural; planets drawn to scale; the steam envelope is drawn ×{fid.envelope ?? 3} thicker by default (labelled), the plot shows model radii</td></tr>
                 <tr><td>Outgoing-radiation figure</td><td><span className="tag vis">visual</span> schematic after Goldblatt et al. (2013)</td></tr>
               </tbody>
@@ -152,7 +152,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
 
       {/* ── References ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="refs">
-        <SectionHead num="06 — REFERENCES" id="refs" title="References" lede="Key papers behind the model and the test." />
+        <SectionHead num="06 · References" id="refs" title="References" lede="Key papers behind the model and the test." />
         <ul className="refs">
           <li className="key"><span className="au">Schlecker, M., Apai, D., Lichtenberg, T., et al. 2024</span>, <span className="ti">Bioverse: The Habitable Zone Inner Edge Discontinuity as an Imprint of Runaway Greenhouse Climates on Exoplanet Demographics</span>, PSJ 5, 3. <a href="https://doi.org/10.3847/PSJ/ad0d10">doi</a></li>
           <li className="key"><span className="au">Turbet, M., Ehrenreich, D., Lovis, C., Bolmont, E., Fauchez, T. 2019</span>, <span className="ti">The runaway greenhouse radius inflation effect</span>, A&A 628, A12. <a href="https://doi.org/10.1051/0004-6361/201935585">doi</a></li>

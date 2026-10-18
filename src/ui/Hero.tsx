@@ -542,7 +542,7 @@ export function Hero({ data, model, params, setParams, reducedMotion }: Props) {
             kicker = '06 · The signal';
             const v = verdict(m.fit.lnK);
             const [q16, , q84] = m.fit.sQ;
-            text = `All ${m.planets.length} planets: ln K = ${signed(m.fit.lnK, 1)} (${v.label}); best fit S_thresh ≈ ${Math.round(m.fit.best.S)} W m⁻², 68 % interval ${Math.round(q16)}–${Math.round(q84)} W m⁻² (injected ${S_t}).`;
+            text = `All ${m.planets.length} planets: ln ΔZ = ${signed(m.fit.lnK, 1)} (${v.label}); best fit S_thresh ≈ ${Math.round(m.fit.best.S)} W m⁻², 68 % interval ${Math.round(q16)}–${Math.round(q84)} W m⁻² (injected ${S_t}).`;
           }
         }
         if (ph !== st.phase) { st.phase = ph; setPhase(ph); }
@@ -772,7 +772,7 @@ export function Hero({ data, model, params, setParams, reducedMotion }: Props) {
                 <div className="ev-row">
                   <div className="ev-value" ref={evValRef}>—</div>
                   <div>
-                    <div className="ev-eq">ln K = ln ( Z<sub>H1</sub> / Z<sub>H0</sub> )</div>
+                    <div className="ev-eq">ln Δ<i>Z</i> = ln <i>Z</i><sub>H1</sub> − ln <i>Z</i><sub>H0</sub></div>
                     <div className="ev-verdict"><span className="ev-pip" ref={evPipRef} /><span ref={evVerdictRef} /></div>
                     <div className="ev-n" ref={evNRef} />
                   </div>
@@ -780,7 +780,7 @@ export function Hero({ data, model, params, setParams, reducedMotion }: Props) {
               </div>
               <div className="ev-right">
                 <canvas ref={sparkRef} aria-hidden="true" />
-                <div className="ev-foot"><span>ln K as the survey grows</span><span>log N →</span></div>
+                <div className="ev-foot"><span>ln ΔZ as the survey grows</span><span>log N →</span></div>
               </div>
             </div>
           </div>

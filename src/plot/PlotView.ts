@@ -562,7 +562,8 @@ export class PlotView {
       }
     }
 
-    // direct labels on a surface pill, with a line key (text stays in ink colours)
+    // direct label for the best fit, with a line key (text stays in ink colours);
+    // the H0 line and the posterior draws are identified by the legend only
     g.font = `600 ${small ? 10 : 11}px ${FONT}`;
     g.textBaseline = 'middle';
     const pill = (text: string, x: number, y: number, align: 'left' | 'right', key: string | null, keyW: number, alpha: number) => {
@@ -571,8 +572,8 @@ export class PlotView {
       const tw = g.measureText(text).width;
       const w = tw + 14 + (key ? 20 : 0);
       const xl = align === 'left' ? x : x - w;
-      g.fillStyle = 'rgba(7,10,18,0.85)';
-      g.beginPath(); g.roundRect(xl, y - 10, w, 20, 10); g.fill();
+      g.fillStyle = 'rgba(7,10,18,0.88)';
+      g.fillRect(xl, y - 10, w, 20);
       if (key) {
         g.strokeStyle = key;
         g.lineWidth = keyW;
@@ -582,12 +583,6 @@ export class PlotView {
       g.textAlign = 'left';
       g.fillText(text, xl + 7 + (key ? 20 : 0), y + 0.5);
     };
-    if (Number.isFinite(f.mu0)) {
-      // keep the H0 label clear of the best-fit line on the cold side
-      const above = !Number.isFinite(b.muCold) || b.muCold <= f.mu0;
-      pill('H0 · no step', x1 - 4, this.y(f.mu0) + (above ? -15 : 15), 'right', null, 0, 1);
-    }
-    pill(`H1 posterior · ${f.draws.length} draws`, x0 + 6, y1 + 22, 'left', COLORS.draw, 1.5, 1 - select);
     if (select > 0.3 && Number.isFinite(b.S)) {
       const dR = b.muHot - b.muCold;
       const txt = `Best fit · S_thresh ≈ ${Math.round(b.S)} W m⁻² · ΔR̄ = ${dR >= 0 ? '+' : '−'}${Math.abs(dR).toFixed(3)} R⊕`;

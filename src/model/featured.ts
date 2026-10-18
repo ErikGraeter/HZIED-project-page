@@ -34,12 +34,15 @@ export function pickFeatured(planets: Planet[], S_thresh: number): Featured {
   take(quantilePick(sunlit.length ? sunlit : steam, infl, 1.0, used), 'hot-steam');
   // 2: a strongly irradiated steam planet — its magma ocean is drawn vividly
   take(quantilePick(steam, (i) => planets[i].S_abs, 0.97, used), 'hot-steam');
-  // 3: a hot planet without a steam envelope (water-poor / f_rgh draw)
-  take(quantilePick(dry, rad, 0.5, used), 'hot-dry');
+  // 3: a typical inflated planet (median inflation)
+  take(quantilePick(steam, infl, 0.5, used), 'hot-steam');
   // 4: another inflated planet, small core
   take(quantilePick(steam, rad, 0.25, used), 'hot-steam');
-  // fall back to dry planets when no envelopes exist (e.g. f_rgh = 0)
-  while (hot.length < 3) {
+  // The 3D view shows only inflating planets on the hot side, so the effect
+  // reads at a glance; the non-inflating hot planets stay in the plot and in
+  // the evidence as open rings.  Dry planets are featured only when no
+  // envelopes exist at all (e.g. f_rgh = 0), so the null case is still shown.
+  while (!steam.length && hot.length < 3) {
     const extra = quantilePick(dry, rad, hot.length / 3, used);
     if (extra === null) break;
     take(extra, 'hot-dry');

@@ -126,7 +126,7 @@ export function InflationCurves({ data, fiducial }: { data: HziedData; fiducial:
                 return <circle key={k} cx={x(hM)} cy={y(v)} r="3.5" fill={RAMP[k]} stroke="#0b1020" strokeWidth="2" />;
               })}
               <g transform={`translate(${Math.min(x(hM) + 10, W - m.r - 150)} ${m.t + 4})`}>
-                <rect width="138" height={22 + 15 * ws.length} rx="8" fill="rgba(8,11,22,0.95)" stroke="rgba(255,255,255,0.14)" />
+                <rect width="138" height={22 + 15 * ws.length} rx="2" fill="rgba(6,8,13,0.96)" stroke="rgba(255,255,255,0.14)" />
                 <text className="lbl-strong" x="10" y="16">M = {hM.toFixed(2)} M⊕</text>
                 {ws.map((w, k) => (
                   <g key={w} transform={`translate(10 ${32 + 15 * k})`}>
@@ -203,7 +203,7 @@ export function RadiusDistributions({ planets, S_thresh }: { planets: Planet[]; 
             <g>
               <line x1={x(grid[hk])} x2={x(grid[hk])} y1={m.t} y2={H - m.b} stroke="rgba(255,255,255,0.3)" />
               <g transform={`translate(${Math.min(x(grid[hk]) + 10, W - m.r - 190)} ${m.t + 18})`}>
-                <rect width="182" height={22 + 15 * series.length} rx="8" fill="rgba(8,11,22,0.95)" stroke="rgba(255,255,255,0.14)" />
+                <rect width="182" height={22 + 15 * series.length} rx="2" fill="rgba(6,8,13,0.96)" stroke="rgba(255,255,255,0.14)" />
                 <text className="lbl-strong" x="10" y="16">R = {grid[hk].toFixed(2)} R⊕</text>
                 {series.map((s, k) => (
                   <g key={s.key} transform={`translate(10 ${32 + 15 * k})`}>
@@ -241,16 +241,16 @@ export function EvidenceVsN({ curves }: { curves: { label: string; seq: StepFit[
   return (
     <figure className="figure card">
       <h4>How fast does the evidence grow?</h4>
-      <p className="card-sub">Toy ln K (step model with free threshold vs. no step) as the survey grows, fiducial injection S_thresh = 280 W m⁻², wrr = 0.5 %, f_rgh = 0.8</p>
+      <p className="card-sub">Toy ln ΔZ (step model with free threshold vs. no step) as the survey grows, fiducial injection S_thresh = 280 W m⁻², wrr = 0.5 %, f_rgh = 0.8</p>
       <div className="chart-legend">
         {curves.map((c, k) => {
           const v = c.seq[c.seq.length - 1]?.lnK ?? 0;
-          return <span key={c.label}><i className="lg-line" style={{ borderColor: SAMPLE_COLORS[k] }} />{c.label} · ln K {v >= 0 ? '+' : '−'}{Math.abs(v).toFixed(1)}</span>;
+          return <span key={c.label}><i className="lg-line" style={{ borderColor: SAMPLE_COLORS[k] }} />{c.label} · ln ΔZ {v >= 0 ? '+' : '−'}{Math.abs(v).toFixed(1)}</span>;
         })}
-        <span><i className="lg-line" style={{ borderColor: 'rgba(255,190,140,0.6)', borderTopStyle: 'dashed' }} />strong evidence (ln K = 5)</span>
+        <span><i className="lg-line" style={{ borderColor: 'rgba(255,190,140,0.6)', borderTopStyle: 'dashed' }} />strong evidence (ln ΔZ = 5)</span>
       </div>
       <div className="chart">
-        <svg viewBox={`0 0 ${W} ${H}`} {...hv} role="img" aria-label="Toy-model log Bayes factor versus number of planets for the three samples.">
+        <svg viewBox={`0 0 ${W} ${H}`} {...hv} role="img" aria-label="Toy-model log evidence difference ln ΔZ versus number of planets for both samples.">
           <g className="grid">{y.ticks(6).map((v) => <line key={v} x1={m.l} x2={W - m.r} y1={y(v)} y2={y(v)} />)}</g>
           <line x1={m.l} x2={W - m.r} y1={y(0)} y2={y(0)} stroke="rgba(255,255,255,0.3)" />
           <line x1={m.l} x2={W - m.r} y1={y(5)} y2={y(5)} stroke="rgba(255,190,140,0.6)" strokeDasharray="5 5" />
@@ -270,7 +270,7 @@ export function EvidenceVsN({ curves }: { curves: { label: string; seq: StepFit[
             <g>
               <line x1={x(hN)} x2={x(hN)} y1={m.t} y2={H - m.b} stroke="rgba(255,255,255,0.3)" />
               <g transform={`translate(${Math.min(x(hN) + 10, W - m.r - 150)} ${m.t + 4})`}>
-                <rect width="150" height={22 + 15 * curves.length} rx="8" fill="rgba(8,11,22,0.95)" stroke="rgba(255,255,255,0.14)" />
+                <rect width="150" height={22 + 15 * curves.length} rx="2" fill="rgba(6,8,13,0.96)" stroke="rgba(255,255,255,0.14)" />
                 <text className="lbl-strong" x="10" y="16">N = {hN}</text>
                 {curves.map((c, k) => (
                   <g key={c.label} transform={`translate(10 ${32 + 15 * k})`}>
@@ -290,7 +290,7 @@ export function EvidenceVsN({ curves }: { curves: { label: string; seq: StepFit[
             {y.ticks(6).map((v) => <text key={v} x={m.l - 8} y={y(v) + 3} textAnchor="end">{v}</text>)}
           </g>
           <text className="lbl" x={(m.l + W - m.r) / 2} y={H - 6} textAnchor="middle">number of observed planets N</text>
-          <text className="lbl" transform={`translate(12 ${(H - m.b + m.t) / 2}) rotate(-90)`} textAnchor="middle">ln K (toy)</text>
+          <text className="lbl" transform={`translate(12 ${(H - m.b + m.t) / 2}) rotate(-90)`} textAnchor="middle">ln ΔZ (toy)</text>
         </svg>
       </div>
       <figcaption>Illustrative per-planet comparison (H1: a step in mean radius at a free threshold, S_thresh ~ U(10, 1000) W m⁻²; H0: one mean). The thesis analysis fits the Schlecker et al. (2024) step model with nested sampling; its evidence values differ.</figcaption>

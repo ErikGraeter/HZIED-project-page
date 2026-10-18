@@ -232,7 +232,7 @@ export function DensityFigure(props: DensityProps) {
         g.font = `600 ${small ? 10.5 : 11.5}px ${FONT}`;
         const tw = g.measureText(txt).width + 16;
         g.fillStyle = 'rgba(7,10,18,0.88)';
-        g.beginPath(); g.roundRect(w - m.r - tw, m.t + 2, tw, 22, 11); g.fill();
+        g.beginPath(); g.rect(w - m.r - tw, m.t + 2, tw, 22); g.fill();
         g.fillStyle = C.ink; g.textAlign = 'left'; g.textBaseline = 'middle';
         g.fillText(txt, w - m.r - tw + 8, m.t + 13.5);
         g.textBaseline = 'alphabetic';
@@ -260,7 +260,7 @@ export function DensityFigure(props: DensityProps) {
         if (bx + bw > w - m.r) bx = x0 - bw - 18;
         if (by < m.t) by = y0 + 14;
         g.fillStyle = 'rgba(7,10,18,0.92)'; g.strokeStyle = 'rgba(255,255,255,0.18)'; g.lineWidth = 1;
-        g.beginPath(); g.roundRect(bx, by, bw, bh, 9); g.fill(); g.stroke();
+        g.beginPath(); g.rect(bx, by, bw, bh); g.fill(); g.stroke();
         lines.forEach((l, k) => { g.fillStyle = k === lines.length - 1 ? C.ink : C.ink2; g.fillText(l, bx + 10, by + 20 + 16 * k); });
         g.restore();
       }

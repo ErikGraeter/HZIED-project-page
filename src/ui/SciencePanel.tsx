@@ -76,7 +76,7 @@ export function SciencePanel({ open, data, model, params, setParams }: Props) {
       <div className="science-foot">
         <span>
           {model.planets.length} planets · {nHot} hot ({nInfl} with steam envelope) · {model.planets.length - nHot} cold ·
-          toy ln K = {signed(model.fit.lnK, 1)} ({v.label}) · best-fit S_thresh ≈ {Math.round(model.fit.best.S)} W m⁻²
+          toy ln ΔZ = {signed(model.fit.lnK, 1)} ({v.label}) · best-fit S_thresh ≈ {Math.round(model.fit.best.S)} W m⁻²
         </span>
         <button className="btn" tabIndex={open ? 0 : -1} onClick={() => setParams({ ...defaultParams(data), sample: params.sample })}>Reset to fiducial</button>
       </div>
