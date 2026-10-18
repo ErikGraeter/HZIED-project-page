@@ -48,7 +48,7 @@ button { font: inherit; color: inherit; }
   position: fixed; inset: 0; z-index: -2; pointer-events: none;
   background: var(--bg);
 }
-.starfield { position: fixed; inset: 0; z-index: -1; pointer-events: none; width: 100%; height: 100%; opacity: 0.55; }
+.starfield { position: fixed; inset: 0; z-index: -1; pointer-events: none; width: 100%; height: 100%; }
 
 /* ── header ──────────────────────────────────────────────────────────────── */
 .site-header {

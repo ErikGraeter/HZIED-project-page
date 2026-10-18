@@ -17,13 +17,13 @@ export function Starfield({ reducedMotion }: { reducedMotion: boolean }) {
       w = window.innerWidth; h = window.innerHeight;
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       const rnd = mulberry32(42);
-      const n = Math.round((w * h) / 2600);
+      const n = Math.round((w * h) / 1700);
       stars = Array.from({ length: n }, () => {
         const bright = rnd() < 0.06;
         return {
           x: rnd() * w, y: rnd() * h * 1.4,
-          r: bright ? 0.9 + rnd() * 0.9 : 0.35 + rnd() * 0.6,
-          a: bright ? 0.6 + rnd() * 0.4 : 0.18 + rnd() * 0.42,
+          r: bright ? 1.0 + rnd() * 1.0 : 0.45 + rnd() * 0.65,
+          a: bright ? 0.75 + rnd() * 0.25 : 0.3 + rnd() * 0.5,
           f: 0.3 + rnd() * 1.4, ph: rnd() * Math.PI * 2,
           tint: tints[Math.floor(rnd() * tints.length)],
           depth: 0.02 + rnd() * 0.08,
