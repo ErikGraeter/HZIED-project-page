@@ -1,0 +1,37 @@
+{
+  "name": "hzied-website",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Interactive research homepage for the Habitable Zone Inner Edge Discontinuity (HZIED).",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --open",
+    "build": "tsc --noEmit && vite build",
+    "build:single": "tsc --noEmit && vite build --mode single && cp dist-single/index.html 'HZIED Homepage.html'",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --open",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "export-data": "python3 scripts/export_hzied_data.py"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "d3-scale": "^4.0.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.0",
+    "three": "^0.186.1"
+  },
+  "devDependencies": {
+    "@types/d3-scale": "^4.0.9",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vitest": "^5.0.5"
+  }
+}
