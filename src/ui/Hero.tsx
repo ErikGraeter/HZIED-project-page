@@ -657,9 +657,9 @@ export function Hero({ data, model, params, setParams, reducedMotion }: Props) {
       <div className="star-leak" ref={leakRef} />
       <div className="hero-title">
         <div className="titles">
-          <p className="eyebrow">Exoplanet demographics · PLATO · Bayesian inference</p>
+          <p className="eyebrow">Exoplanet demographics</p>
           <h1>The Habitable Zone <em>Inner Edge</em> Discontinuity</h1>
-          <p className="subtitle">When planetary atmospheres expand, a hidden boundary becomes observable.</p>
+          <p className="subtitle">A population-level hint on the water content of rocky exoplanets.</p>
         </div>
       </div>
       {data.synthetic && (
