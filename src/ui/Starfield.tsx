@@ -8,40 +8,80 @@ import { mulberry32 } from '../model/rng';
 
 interface Galaxy { x: number; y: number; rot: number; incl: number; depth: number; a: number; sprite: HTMLCanvasElement }
 
-/** Face-on sprite of a small galaxy: a warm bulge, and for spirals two dusty blue arms. */
+/**
+ * Face-on sprite of a small galaxy, rendered per pixel: a de Vaucouleurs bulge
+ * (warm, old stars) on an exponential disk (bluer, young stars).  Spirals get
+ * two clumpy logarithmic arms with a dust lane on their inner edge and a few
+ * pinkish star-forming knots; ellipticals are a smooth Sérsic profile.
+ */
 function galaxySprite(rnd: () => number, R: number, spiral: boolean, dpr: number): HTMLCanvasElement {
   const c = document.createElement('canvas');
   const S = Math.ceil(2 * R * dpr);
   c.width = c.height = S;
   const g = c.getContext('2d')!;
-  g.scale(dpr, dpr);
-  const o = R;
-  const disk = g.createRadialGradient(o, o, 0, o, o, R);
-  disk.addColorStop(0, spiral ? 'rgba(200,214,255,0.22)' : 'rgba(255,232,205,0.42)');
-  disk.addColorStop(spiral ? 0.55 : 0.4, spiral ? 'rgba(170,190,255,0.07)' : 'rgba(255,225,195,0.10)');
-  disk.addColorStop(1, 'rgba(170,190,255,0)');
-  g.fillStyle = disk; g.fillRect(0, 0, 2 * R, 2 * R);
-  if (spiral) {
-    // two logarithmic arms of scattered points, fading outwards
-    const pitch = 0.28 + 0.1 * rnd();
-    for (let arm = 0; arm < 2; arm++) {
-      for (let k = 0; k < 260; k++) {
-        const u = k / 260;
-        const th = arm * Math.PI + u * 3.4 * Math.PI;
-        const r = R * 0.12 * Math.exp(pitch * th / Math.PI * 1.6);
-        if (r > R * 0.95) break;
-        const j = R * 0.06 * (rnd() + rnd() - 1);
-        const x = o + (r + j) * Math.cos(th), y = o + (r + j) * Math.sin(th);
-        g.fillStyle = `rgba(${rnd() < 0.15 ? '255,215,225' : '205,220,255'},${(0.5 * (1 - r / R)).toFixed(3)})`;
-        g.beginPath(); g.arc(x, y, 0.35 + 0.5 * rnd(), 0, Math.PI * 2); g.fill();
+  const img = g.createImageData(S, S);
+  const px = img.data;
+  const rd = 0.24, re = spiral ? 0.07 : 0.2;            // disk scale length, bulge radius (units of R)
+  const pitch = (12 + 10 * rnd()) * Math.PI / 180;       // arm pitch angle
+  const k = 1 / Math.tan(pitch);
+  const phase0 = rnd() * Math.PI * 2;
+  const seed = Math.floor(rnd() * 1e6);
+  const hash = (x: number, y: number) => {
+    let h = (x * 374761393 + y * 668265263 + seed * 2246822519) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  };
+  // smooth value noise for clumpy arms
+  const noise = (x: number, y: number) => {
+    const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+    const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const a = hash(xi, yi), b = hash(xi + 1, yi), c2 = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
+    return a + (b - a) * sx + (c2 - a) * sy + (a - b - c2 + d) * sx * sy;
+  };
+  for (let j = 0; j < S; j++) {
+    for (let i = 0; i < S; i++) {
+      const x = ((i + 0.5) / S) * 2 - 1, y = ((j + 0.5) / S) * 2 - 1;
+      const r = Math.hypot(x, y);
+      if (r >= 1) continue;
+      const edge = 1 - Math.pow(r, 6);
+      const bulge = Math.exp(-7.67 * (Math.pow(Math.max(r, 1e-4) / re, 0.25) - 1));
+      // soft saturation keeps the bright centre from clipping into a hard edge
+      let warm = spiral ? Math.min(6, bulge) * 0.09 : 1.1 * (1 - Math.exp(-0.25 * bulge));
+      let blue = 0, pink = 0;
+      if (spiral) {
+        const disk = Math.exp(-r / rd);
+        const th = Math.atan2(y, x);
+        const ph = 2 * (th - k * Math.log(Math.max(r, 0.02))) + phase0;
+        const arm = Math.pow(0.5 + 0.5 * Math.cos(ph), 3);
+        const dust = Math.pow(0.5 + 0.5 * Math.cos(ph - 0.9), 6) * Math.min(1, r / 0.12) * (1 - r);
+        const clump = 0.55 + 0.9 * noise(x * 14, y * 14);
+        blue = disk * (0.25 + 1.6 * arm * clump) * (1 - 0.65 * dust);
+        warm += disk * 0.35 * (1 - 0.65 * dust);
+        if (arm > 0.55 && r > 0.18 && hash(i, j) > 0.985) pink = 0.9 * disk / 0.6;
+      } else {
+        warm += 0.25 * Math.exp(-r / 0.32);
       }
+      const R_ = 255 * (warm * 1.0 + blue * 0.72 + pink * 1.0);
+      const G_ = 255 * (warm * 0.86 + blue * 0.8 + pink * 0.62);
+      const B_ = 255 * (warm * 0.66 + blue * 1.0 + pink * 0.78);
+      const lum = Math.max(R_, G_, B_);
+      const a = Math.min(1, lum / 255) * edge;
+      const o = 4 * (j * S + i);
+      const sc = lum > 0 ? 255 / Math.max(lum, 255) : 0;
+      px[o] = Math.min(255, R_ * sc * (255 / Math.max(lum * sc, 1)));
+      px[o + 1] = Math.min(255, G_ * sc * (255 / Math.max(lum * sc, 1)));
+      px[o + 2] = Math.min(255, B_ * sc * (255 / Math.max(lum * sc, 1)));
+      px[o + 3] = Math.round(255 * Math.min(1, Math.pow(a, 0.8)));
     }
   }
-  const core = g.createRadialGradient(o, o, 0, o, o, R * (spiral ? 0.22 : 0.35));
-  core.addColorStop(0, 'rgba(255,240,220,0.95)');
-  core.addColorStop(1, 'rgba(255,225,190,0)');
-  g.fillStyle = core; g.beginPath(); g.arc(o, o, R * (spiral ? 0.22 : 0.35), 0, Math.PI * 2); g.fill();
-  return c;
+  g.putImageData(img, 0, 0);
+  // a touch of softening, as through a telescope
+  const soft = document.createElement('canvas');
+  soft.width = soft.height = S;
+  const sg = soft.getContext('2d')!;
+  sg.filter = `blur(${(0.45 * dpr).toFixed(2)}px)`;
+  sg.drawImage(c, 0, 0);
+  return soft;
 }
 
 export function Starfield({ reducedMotion }: { reducedMotion: boolean }) {
@@ -75,11 +115,11 @@ export function Starfield({ reducedMotion }: { reducedMotion: boolean }) {
       const slots = [[0.945, 0.15], [0.035, 0.52], [0.955, 0.92], [0.04, 1.22]];   // side margins, clear of the text column
       galaxies = slots.map(([fx, fy], k) => {
         const spiral = k !== 1;
-        const R = (spiral ? 22 : 13) + grnd() * 12;
+        const R = (spiral ? 24 : 14) + grnd() * 12;
         return {
           x: w * fx, y: h * fy, rot: grnd() * Math.PI,
           incl: spiral ? 0.35 + 0.4 * grnd() : 0.6 + 0.3 * grnd(),
-          depth: 0.012, a: 0.75 + 0.25 * grnd(),
+          depth: 0.012, a: 0.6 + 0.2 * grnd(),
           sprite: galaxySprite(grnd, R, spiral, dpr),
         };
       });
