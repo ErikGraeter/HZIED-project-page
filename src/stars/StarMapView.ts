@@ -122,6 +122,7 @@ export class StarMapView {
   private mat: THREE.ShaderMaterial;
   private stars: THREE.Points;
   private grid = new THREE.Group();
+  private clusterRings: THREE.Points[] = [];
   private sun!: THREE.Points;
   private hoverMark: THREE.Points;
   private selMark: THREE.Points;
@@ -294,6 +295,41 @@ export class StarMapView {
     line([new THREE.Vector3(), fromLB(c.l, c.b, 1300)], 0xe9edf4, 0.22, false, true);
     this.addLabel(`LOPS2 field direction  l = ${c.l.toFixed(1)}°, b = ${c.b.toFixed(1)}°`, fromLB(c.l, c.b, 1330), 'field');
     this.addLabel('Sun', new THREE.Vector3(), 'sun', false);
+    // open clusters: thin screen-facing circle around the median position of their members
+    for (const cl of this.cat.meta.clusters ?? []) {
+      const g = new THREE.BufferGeometry();
+      const c = toScene(cl.x, cl.y, cl.z);
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([c.x, c.y, c.z]), 3));
+      const ring = new THREE.Points(g, new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, depthTest: false,
+        uniforms: { uScale: this.mat.uniforms.uScale, uR: { value: Math.max(10, cl.radius_pc * 1.6) }, uDpr: { value: 1 } },
+        vertexShader: /* glsl */ `
+          uniform float uScale, uR, uDpr; varying float vPx;
+          void main() {
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * mv;
+            vPx = clamp(2.0 * uR * uScale / max(-mv.z, 1.0), 36.0 * uDpr, 260.0 * uDpr);
+            gl_PointSize = vPx;
+          }`,
+        fragmentShader: /* glsl */ `
+          uniform float uDpr; varying float vPx;
+          void main() {
+            float r = length(gl_PointCoord * 2.0 - 1.0) * 0.5 * vPx;   // px from the centre
+            float edge = 0.5 * vPx - 1.5 * uDpr;
+            float dr = abs(r - edge);
+            float line = 1.0 - smoothstep(0.35 * uDpr, 1.1 * uDpr, dr);          // thin light line
+            float halo = 1.0 - smoothstep(1.4 * uDpr, 3.2 * uDpr, dr);           // dark keyline for contrast
+            float a = max(line * 0.85, halo * 0.55);
+            if (a < 0.01) discard;
+            gl_FragColor = vec4(mix(vec3(0.02, 0.03, 0.06), vec3(0.88, 0.9, 0.94), line), a);
+          }`,
+      }));
+      ring.frustumCulled = false;
+      ring.renderOrder = 3;
+      this.clusterRings.push(ring);
+      this.grid.add(ring);
+      this.addLabel(cl.name, c, 'cluster');
+    }
     this.scene.add(this.grid);
   }
 
@@ -374,7 +410,7 @@ export class StarMapView {
       float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
-      float fbm(vec2 p) { return 0.55 * noise(p) + 0.3 * noise(p * 2.13 + 7.1) + 0.15 * noise(p * 4.7 + 1.3); }
+      float fbm(vec2 p) { return 0.65 * noise(p) + 0.35 * noise(p * 2.13 + 7.1); }
       // in-plane structure at galactocentric (x, y) in kpc; Sun at (−8.15, 0)
       float arms(vec2 q, float R, float phi) {
         float ph = 4.0 * (phi - PI - log(max(R, 0.3) / 10.0) / TANP);
@@ -390,7 +426,7 @@ export class StarMapView {
         return 0.55 * exp(-pow(b.x / 3.4, 2.0) - pow(b.y / 0.95, 2.0)) + exp(-dot(q, q) / 1.2);
       }`;
     // stacked haze layers through the disk (heights in kpc relative to the midplane)
-    const layers = [-0.48, -0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36, 0.48];
+    const layers = [-0.45, -0.22, 0, 0.22, 0.45];
     const geo = new THREE.PlaneGeometry(40000, 40000, 1, 1);
     layers.forEach((z, k) => {
       const mat = new THREE.ShaderMaterial({
@@ -402,15 +438,15 @@ export class StarMapView {
           varying vec2 vXY;
           void main() {
             float R = length(vXY);
-            if (R > 17.0) discard;
+            if (R > 17.0 || uOpacity * uFade < 0.002) discard;
             float phi = atan(vXY.y, vXY.x);
             // vertical profiles: arms are thin, the old disk and the bulge thicker
-            float wArm = exp(-uZ * uZ / 0.022), wDisk = exp(-abs(uZ) / 0.3), wBul = exp(-uZ * uZ / 0.35);
-            float mist = fbm(vXY * 1.6 + uSeed) * fbm(vXY * 4.3 - uSeed);
+            float wArm = exp(-uZ * uZ / 0.05), wDisk = exp(-abs(uZ) / 0.3), wBul = exp(-uZ * uZ / 0.35);
+            float mist = fbm(vXY * 1.6 + uSeed) * noise(vXY * 4.3 - uSeed);
             float disk = exp(-R / 3.0) * (1.0 - smoothstep(12.5, 17.0, R));
             float a = disk * (0.22 * wDisk + 2.6 * wArm * arms(vXY, R, phi) * (0.3 + 1.4 * mist)) + 0.4 * wBul * barBulge(vXY);
             vec3 col = mix(vec3(0.50, 0.62, 0.95), vec3(1.0, 0.80, 0.55), clamp(barBulge(vXY) + exp(-R / 2.2) * 0.5, 0.0, 1.0));
-            gl_FragColor = vec4(col, a * uOpacity * uFade * 0.16);
+            gl_FragColor = vec4(col, a * uOpacity * uFade * 0.24);
           }`,
       });
       const m = new THREE.Mesh(geo, mat);
@@ -451,7 +487,7 @@ export class StarMapView {
     cg.setAttribute('aTint', new THREE.BufferAttribute(tint.subarray(0, n), 1));
     const clumps = new THREE.Points(cg, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-      uniforms: { ...U, uScale: this.mat.uniforms.uScale, uMaxPx: { value: 110 } },
+      uniforms: { ...U, uScale: this.mat.uniforms.uScale, uMaxPx: { value: 72 } },
       vertexShader: /* glsl */ `
         attribute float aSize; attribute float aTint;
         uniform float uScale, uMaxPx;
@@ -730,6 +766,7 @@ export class StarMapView {
     (this.hoverMark.material as THREE.ShaderMaterial).uniforms.uPx.value = 20 * dpr;
     (this.selMark.material as THREE.ShaderMaterial).uniforms.uPx.value = 26 * dpr;
     ((this.sky.children[0] as THREE.Points).material as THREE.ShaderMaterial).uniforms.uDpr.value = dpr;
+    this.clusterRings.forEach((r) => { (r.material as THREE.ShaderMaterial).uniforms.uDpr.value = dpr; });
   }
 
   private frame(now: number) {
@@ -770,6 +807,8 @@ export class StarMapView {
     this.galFade += ((this.galaxyOn ? 1 : 0) - this.galFade) * (this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * 4));
     this.galU.uFade.value = this.galFade;
     this.galaxy.visible = this.galFade > 0.003;
+    // cluster markers are local annotations; at Galactic scale they would only clutter the Sun
+    this.clusterRings.forEach((r) => { r.visible = camR < 7000; });
 
     this.renderer.clear();
     this.skyCamera.quaternion.copy(this.camera.quaternion);
@@ -791,6 +830,7 @@ export class StarMapView {
       const r = l.pos.length();
       const gal = l.el.classList.contains('gal');
       if (gal && (!this.galaxyOn || this.camera.position.length() < 9000)) { l.el.style.opacity = '0'; continue; }
+      if (l.el.classList.contains('cluster') && this.camera.position.length() >= 7000) { l.el.style.opacity = '0'; continue; }
       const tooBig = l.el.classList.contains('ring') && r > dist * 2.2;
       const tooSmall = l.el.classList.contains('ring') && r < dist * 0.04;
       l.el.style.opacity = off || tooBig || tooSmall ? '0' : '';

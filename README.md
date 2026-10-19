@@ -201,7 +201,8 @@ A second tab shows the real P4 and P5 target stars in 3D around the Sun.
   (Vallée 2008) anchored so that Sagittarius–Carina (≈ 7.0 kpc) and Perseus (≈ 10.0 kpc) bracket the
   Solar circle at the Sun's azimuth, Local arm at ≈ 8.6 kpc, bar at 27° (near end at l > 0).
   Approximate to a few hundred pc; orientation only. “Milky Way view” flies out to a view from the north.
-* Real structure is visible, e.g. the open cluster NGC 2516 at ≈ 410 pc (≈ 5× the local
+* Real structure is visible, e.g. the open cluster NGC 2516 at ≈ 410 pc, marked with a thin circle at
+  the median position of the selected sample stars (computed by the exporter; hidden with the reference grid) (≈ 5× the local
   density of sample stars within 1° of its centre at its distance).
 
 Interaction: P4 / P5 / Both (the camera reframes), colour by sample or spectral class,

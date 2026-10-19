@@ -95,4 +95,14 @@ describe('PLATO stellar samples', () => {
     const total = CLASSES.reduce((a, k) => a + both.classCounts[k].P4 + both.classCounts[k].P5, 0);
     expect(total).toBe(both.n);
   });
+
+  it('NGC 2516 marker sits on the cluster (RA 119.5°, Dec −60.8°, ≈ 410 pc)', () => {
+    const cl = meta.clusters?.find((c) => c.name === 'NGC 2516');
+    expect(cl).toBeDefined();
+    const a = anglesOf(cl!.x, cl!.y, cl!.z);
+    expect(Math.abs(a.ra - 119.53)).toBeLessThan(1.0);
+    expect(Math.abs(a.dec + 60.75)).toBeLessThan(0.6);
+    expect(Math.abs(cl!.d - 410)).toBeLessThan(20);
+    expect(cl!.n_selected).toBeGreaterThan(3 * cl!.n_expected_field);
+  });
 });

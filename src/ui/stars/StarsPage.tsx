@@ -234,7 +234,7 @@ function Notes({ m }: { m: StarMeta }) {
         <h3>How the positions are computed</h3>
         <p>RA, Dec and the tPIC distance are converted to heliocentric Cartesian coordinates in the Galactic frame: X towards the Galactic centre, Y in the direction of rotation, Z towards the north Galactic pole. The map's horizontal plane is the Galactic plane, and the rings mark 50 to 1000 pc from the Sun.</p>
         <p>The tPIC distances are based on Gaia DR3 parallaxes; the median ratio of distance to inverse parallax is {(P5.d_plx_ratio_median ?? NaN).toFixed(3)} (P5) and {(P4.d_plx_ratio_median ?? NaN).toFixed(3)} (P4). Median distance uncertainties are {pct(P5.rel_e_d_median)} and {pct(P4.rel_e_d_median)}, much smaller than the structure visible on the map.</p>
-        <p>As a check, the computed Galactic longitudes and latitudes agree with the catalogue's own to better than 10⁻⁵ degrees for every star. Real structure shows up as well: the compact clump at about 410 pc is the open cluster NGC 2516, with roughly five times the field density of sample stars within 1° of its centre at its distance.</p>
+        <p>As a check, the computed Galactic longitudes and latitudes agree with the catalogue's own to better than 10⁻⁵ degrees for every star. Real structure shows up as well: the compact clump at about 410 pc, circled on the map, is the open cluster NGC 2516, with roughly five times the field density of sample stars within 1° of its centre at its distance.</p>
       </div>
       <div className="prose">
         <h3>Limits of the picture</h3>

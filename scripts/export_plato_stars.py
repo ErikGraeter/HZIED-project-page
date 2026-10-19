@@ -62,6 +62,8 @@ WEBSITE_DIR = Path(__file__).resolve().parent.parent
 SAMPLE_BIT  = {'P5': 4, 'P4': 8}            # tPICsourceFlagNCAM_BOL bitmask
 PIC_FITS    = 'data/plato/LOPS2PICtarget2.2.0.1-t-fg-c-scv2.fits'
 FITS_NULL   = -2147483648
+# Open clusters marked on the map: name, RA, Dec (deg), approximate distance (pc)
+CLUSTERS    = [('NGC 2516', 119.53, -60.75, 410.)]
 
 # Column encoding: name → (dtype, scale).  Stored value = round(x / scale);
 # integer columns use the dtype's maximum as the missing-value marker.
@@ -263,6 +265,27 @@ def main():
             out['rel_e_d_median'] = float(np.nanmedian(e_d[m] / d))
             out['d_plx_ratio_median'] = float(np.nanmedian(d * plx[m] / 1000.))
         return out
+    # ── Open clusters visible as overdensities (annotation only) ──────────
+    # Literature centre and distance select candidate members; the marker sits at
+    # the median position of the selected sample stars, so it follows the data.
+    clusters = []
+    for name, ra0, dec0, d0 in CLUSTERS:
+        cosd = (np.sin(np.radians(stars['dec'].values)) * np.sin(np.radians(dec0))
+                + np.cos(np.radians(stars['dec'].values)) * np.cos(np.radians(dec0))
+                * np.cos(np.radians(stars['ra'].values - ra0)))
+        sep = np.degrees(np.arccos(np.clip(cosd, -1, 1)))
+        dd = stars['d'].values
+        sel = (sep < 1.0) & (np.abs(dd - d0) < 0.12 * d0)
+        ring = (sep > 3.0) & (sep < 5.0) & (np.abs(dd - d0) < 0.12 * d0)
+        expected = ring.sum() / (np.pi * (25 - 9)) * np.pi
+        c = np.median(xyz[:, sel], axis=1)
+        r90 = float(np.quantile(np.linalg.norm(xyz[:, sel] - c[:, None], axis=0), 0.6))
+        clusters.append(dict(name=name, x=float(c[0]), y=float(c[1]), z=float(c[2]),
+                             d=float(np.linalg.norm(c)), n_selected=int(sel.sum()),
+                             n_expected_field=float(expected), radius_pc=r90))
+        print(f'{name}: {sel.sum()} stars within 1° and ±12 % of {d0} pc '
+              f'(field expectation {expected:.0f}); centre at {np.linalg.norm(c):.0f} pc')
+
     unit = xyz / np.linalg.norm(xyz, axis=0)
     centre = unit.mean(axis=1)
     centre /= np.linalg.norm(centre)
@@ -270,6 +293,7 @@ def main():
         n=int(len(stars)), layout=layout, raw_bytes=len(blob),
         samples={k: summary((sample_bits & bit) != 0, k) for k, bit in SAMPLE_BIT.items()},
         n_in_both=n_both,
+        clusters=clusters,
         spt_labels=labels, spt_teff=label_teff,
         sample_centroid=dict(l=float(np.degrees(np.arctan2(centre[1], centre[0])) % 360.),
                              b=float(np.degrees(np.arcsin(centre[2])))),

@@ -17,6 +17,8 @@ export interface StarMeta {
   layout: Record<string, Column>;
   samples: Record<'P4' | 'P5', SampleSummary>;
   n_in_both: number;
+  /** Open clusters marked on the map; centre = median position of the selected sample stars. */
+  clusters?: { name: string; x: number; y: number; z: number; d: number; n_selected: number; n_expected_field: number; radius_pc: number }[];
   spt_labels: string[];
   spt_teff: number[];
   sample_centroid: { l: number; b: number };

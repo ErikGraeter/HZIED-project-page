@@ -403,6 +403,7 @@ table.prov td { color: var(--ink-2); }
 }
 .map-label.axis { color: rgba(190, 205, 230, 0.42); }
 .map-label.field { color: rgba(233, 237, 244, 0.6); }
+.map-label.cluster { font-family: var(--sans); font-size: 11.5px; color: rgba(232, 236, 242, 0.92); margin: -34px 0 0 16px; padding: 0 5px; background: rgba(5, 7, 12, 0.72); }
 .map-label.gal { font-family: var(--serif); font-style: italic; font-size: 13px; color: rgba(200, 212, 240, 0.5); }
 .map-label.sun { font-family: var(--sans); font-size: 12px; color: var(--warm-white); margin: -22px 0 0 10px; letter-spacing: 0.02em; }
 
