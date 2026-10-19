@@ -103,6 +103,10 @@ button { font: inherit; color: inherit; }
   margin: 0;
 }
 .hero-title h1 em { font-style: italic; color: var(--warm-white); }
+.hero-cite { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+.hero-cite a { color: var(--ink-2); border-bottom: 1px solid var(--line-2); padding-bottom: 1px; transition: color 0.2s, border-color 0.2s; }
+.hero-cite a:hover { color: var(--ink); border-color: var(--warm-white); text-decoration: none; }
+.hero-cite i { font-family: var(--serif); font-size: 14px; }
 .hero-title .subtitle { margin: 8px 0 0; font-size: clamp(15px, 1.25vw, 18px); color: var(--ink-2); max-width: 60ch; }
 
 .stage {
@@ -526,4 +530,22 @@ table.prov td { color: var(--ink-2); }
   .map-legend .hint { margin-left: 0; }
   .star-card { position: relative; inset: auto; order: 3; width: auto; margin: 12px var(--gutter) 0; }
   .map-tip { display: none; }
+}
+
+/* key-paper reference (section 02) */
+.paper {
+  display: grid; grid-template-columns: 140px minmax(0, 1fr) 220px; gap: 20px;
+  margin-top: 44px; padding: 20px 0 18px; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line);
+}
+.paper-k { font-family: var(--mono); font-size: 11.5px; color: var(--hot-soft); letter-spacing: 0.04em; padding-top: 4px; }
+.paper-title { display: block; font-family: var(--serif); font-size: clamp(20px, 1.8vw, 25px); line-height: 1.2; color: var(--ink); max-width: 56ch; }
+.paper-title:hover { text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 4px; }
+.paper-au { margin-top: 6px; font-size: 13px; color: var(--ink-2); }
+.paper-note { margin: 10px 0 0; font-size: 13px; color: var(--muted); max-width: var(--measure); line-height: 1.55; }
+.paper-meta { display: flex; flex-direction: column; gap: 3px; font-family: var(--mono); font-size: 11px; color: var(--muted); padding-top: 5px; text-align: right; }
+.paper-meta span:first-child { font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink-2); }
+.paper-meta a { color: var(--cold-soft); margin-top: 6px; }
+@media (max-width: 860px) {
+  .paper { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .paper-meta { text-align: left; }
 }

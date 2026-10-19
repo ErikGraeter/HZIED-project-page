@@ -76,6 +76,19 @@ export function Sections({ data, model, reducedMotion }: Props) {
             </div>
           </div>
         </div>
+        <aside className="paper" aria-label="Key paper">
+          <div className="paper-k">Key paper</div>
+          <div className="paper-main">
+            <a className="paper-title" href="https://doi.org/10.3847/PSJ/ad0d10" target="_blank" rel="noopener">Bioverse: The Habitable Zone Inner Edge Discontinuity as an Imprint of Runaway Greenhouse Climates on Exoplanet Demographics</a>
+            <div className="paper-au">Martin Schlecker, Dániel Apai, Tim Lichtenberg, et al.</div>
+            <p className="paper-note">The paper that proposed the HZIED as a population-level test and showed, with Bioverse, how many planets a survey needs to detect it. This thesis follows its setup and replaces the simulated nearby stars with PLATO's real targets.</p>
+          </div>
+          <div className="paper-meta">
+            <span>The Planetary Science Journal</span>
+            <span>5, 3 · 2024</span>
+            <a href="https://doi.org/10.3847/PSJ/ad0d10" target="_blank" rel="noopener">doi:10.3847/PSJ/ad0d10 ↗</a>
+          </div>
+        </aside>
       </section>
 
       {/* ── 3. PLATO ─────────────────────────────────────────────────────── */}

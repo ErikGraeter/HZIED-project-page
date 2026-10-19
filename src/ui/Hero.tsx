@@ -660,6 +660,9 @@ export function Hero({ data, model, params, setParams, reducedMotion }: Props) {
           <p className="eyebrow">Exoplanet demographics</p>
           <h1>The Habitable Zone <em>Inner Edge</em> Discontinuity</h1>
           <p className="subtitle">A population-level hint on the water content of rocky exoplanets.</p>
+          <p className="hero-cite">
+            Building on <a href="https://doi.org/10.3847/PSJ/ad0d10" target="_blank" rel="noopener">Schlecker et al. 2024, <i>Planet. Sci. J.</i> 5, 3 <span aria-hidden="true">↗</span></a>
+          </p>
         </div>
       </div>
       {data.synthetic && (
