@@ -42,14 +42,14 @@ export function Sections({ data, model, reducedMotion }: Props) {
       {/* ── 1. Physics ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="physics">
         <SectionHead num="01 · Physics" id="physics" title="Runaway greenhouse, inflated planets"
-          lede="A rocky planet that absorbs more starlight than its water atmosphere can radiate away loses its oceans to a hot steam envelope — and looks bigger in transit." />
+          lede="A rocky planet that absorbs more starlight than its water atmosphere can radiate away loses its oceans to a hot steam envelope, and it looks bigger in transit." />
         <div className="cols">
           <div className="prose">
             <h3>A ceiling on cooling</h3>
             <p>Water vapour is a greenhouse gas whose abundance rises with temperature. On a planet with oceans, warming adds vapour, which traps more heat. Below a critical absorbed flux the planet still finds an equilibrium. But the thermal emission of a water-saturated atmosphere is capped: it levels off near <strong>≈ 280 W m⁻²</strong> almost independently of surface temperature (Nakajima et al. 1992; Goldblatt et al. 2013).</p>
             <p>A planet that absorbs more than that cannot balance its energy budget. The oceans evaporate completely, the surface heats beyond ~1500 K and can melt into a <strong>magma ocean</strong> beneath a thick steam atmosphere. This runaway greenhouse limit is the <strong>inner edge of the habitable zone</strong> (Kasting et al. 1993; Kopparapu et al. 2013).</p>
             <h3>Steam makes planets look larger</h3>
-            <p>Once the whole water inventory is airborne, the atmosphere is hot and extended. In transit, a planet appears as large as the level at which its atmosphere becomes opaque to starlight — far above the rocky surface. Turbet et al. (2019, 2020) showed that this <strong>runaway greenhouse radius inflation</strong> makes water-rich planets measurably larger than temperate planets of the same mass.</p>
+            <p>Once the whole water inventory is airborne, the atmosphere is hot and extended. In transit, a planet appears as large as the level at which its atmosphere becomes opaque to starlight, which lies far above the rocky surface. Turbet et al. (2019, 2020) showed that this <strong>runaway greenhouse radius inflation</strong> makes water-rich planets measurably larger than temperate planets of the same mass.</p>
             <p>The thesis models the effect with AGNI radiative-transfer steam tables over a PALEOS rocky interior (Boer, Nicholls & Lichtenberg 2025) and the Dorn & Lichtenberg (2021) correction for water stored in the magma. For the fiducial water-to-rock ratio of {(fid.wrr * 100).toFixed(1)} %, the transit radius grows by <strong>{infl05.toFixed(1)}&nbsp;%</strong> at 0.5&nbsp;M⊕, <strong>{infl1.toFixed(1)}&nbsp;%</strong> at 1&nbsp;M⊕ and <strong>{infl3.toFixed(1)}&nbsp;%</strong> at 3&nbsp;M⊕.</p>
           </div>
           <div style={{ display: 'grid', gap: 18 }}>
@@ -62,13 +62,13 @@ export function Sections({ data, model, reducedMotion }: Props) {
       {/* ── 2. Statistical signature ─────────────────────────────────────── */}
       <section className="section" aria-labelledby="signature">
         <SectionHead num="02 · Signature" id="signature" title="From single planets to a population step"
-          lede="A 5–15 % radius change is smaller than the natural spread of rocky planets. No single planet proves anything — but many planets do." />
+          lede="A 5–15 % change in radius is smaller than the natural spread among rocky planets. One planet cannot show the effect; a large enough population can." />
         <div className="cols">
           <RadiusDistributions planets={model.planets} S_thresh={model.params.S_thresh} />
           <div className="prose">
             <p>Rocky planets of 0.5–5 M⊕ span roughly 0.8–1.7 R⊕ simply because their masses differ. At the fiducial water content a steam envelope adds only about 0.05–0.15 R⊕, so an inflated planet hides inside this spread. What changes is the <strong>distribution</strong>: on the hot side of the threshold a fraction <em>f</em><sub>rgh</sub> of the planets is lifted, so the mean radius jumps where the absorbed flux crosses the runaway limit.</p>
             <p>In the population shown above ({model.sample.meta.label}, {model.planets.length} planets), the hot-side mean rocky radius is <strong>{dRock.toFixed(3)} R⊕</strong>; with steam envelopes the same planets average <strong>{dTr.toFixed(3)} R⊕</strong>. The {cold} cold-side planets keep their rocky radii. Plotted against absorbed flux, this produces the step that Schlecker et al. (2024) called the <strong>Habitable Zone Inner Edge Discontinuity</strong>.</p>
-            <p>Not every hot planet inflates — some formed dry or lost their water — and the step competes with selection effects and with any intrinsic radius–flux trend of the population. That is why the HZIED is a statistical test rather than a single measurement: a model with a step at the threshold has to beat a model without one, given the data.</p>
+            <p>Not every hot planet inflates, since some formed dry or lost their water early. The step also competes with selection effects and with any intrinsic radius–flux trend of the population. That is why the HZIED is a statistical test rather than a single measurement: a model with a step at the threshold has to beat a model without one, given the data.</p>
             <div className="stat-row">
               <div className="stat"><div className="k">Hot planets with steam</div><div className="v">{hot.filter((p) => p.steam).length}<small>/ {hot.length}</small></div></div>
               <div className="stat"><div className="k">Mean radius shift (hot)</div><div className="v">{signed(dTr - dRock, 3)}<small>R⊕</small></div></div>
@@ -81,12 +81,12 @@ export function Sections({ data, model, reducedMotion }: Props) {
       {/* ── 3. PLATO ─────────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="plato">
         <SectionHead num="03 · PLATO" id="plato" title="Testing the HZIED with PLATO"
-          lede="ESA's PLATO mission will find small planets around bright stars, measure their radii to a few per cent and enable mass measurements — the sample this test needs." />
+          lede="ESA's PLATO mission will find small planets around bright stars and measure their radii to a few per cent. Bright hosts also make mass measurements possible, which is what this test needs." />
         <div className="cols">
           <div className="prose">
             <p><strong>PLATO</strong> (PLAnetary Transits and Oscillations of stars) monitors large fields of bright stars with 26 cameras for years at a time. Its long baselines reach small planets on temperate orbits, and bright hosts allow precise stellar parameters, ages from asteroseismology, and radial-velocity follow-up for masses (Rauer et al. 2014, 2016).</p>
-            <p>The thesis replaces the artificial nearby-star population of Schlecker et al. (2024) with real stars from the <strong>PLATO Input Catalogue</strong> — the P4 M dwarfs and the P5 FGK dwarfs, analysed together — and asks how many planets PLATO must deliver before the HZIED is detected, or ruled out. In the most optimistic detection scenario on this page (5-yr mission, transits down to 60 ppm, 0.5–20 M⊕) the two samples together yield about {evCurves[1]?.n ?? 200} small planets.</p>
-            <p>Because PLATO's sample grows during the mission, the analysis is <strong>sequential</strong>: the evidence is updated as planets arrive, and the cold side — temperate planets on long orbits, the hardest to find — is the bottleneck. The figure shows how a toy version of this evidence grows with sample size for both populations on this page.</p>
+            <p>The thesis replaces the artificial nearby-star population of Schlecker et al. (2024) with real stars from the <strong>PLATO Input Catalogue</strong> (the P4 M dwarfs and the P5 FGK dwarfs, analysed together) and asks how many planets PLATO must deliver before the HZIED is detected, or ruled out. In the most optimistic detection scenario on this page (5-yr mission, transits down to 60 ppm, 0.5–20 M⊕) the two samples together yield about {evCurves[1]?.n ?? 200} small planets. Where these host stars are in space is shown on the <a href="#samples">PLATO stellar samples</a> page.</p>
+            <p>Because PLATO's sample grows during the mission, the analysis is <strong>sequential</strong>: the evidence is updated as planets arrive, and the cold side is the bottleneck, because temperate planets on long orbits are the hardest to find. The figure shows how a toy version of this evidence grows with sample size for both populations on this page.</p>
           </div>
           <EvidenceVsN curves={evCurves} />
         </div>

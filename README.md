@@ -55,7 +55,8 @@ folder; if it is missing, `launch.command` installs it with a local cache
 | `&speed=<x>` | playback speed |
 | `&mode=explore` | open in explore mode |
 | `&sample=artificial` / `plato` | choose the planet population |
-| `&still=1` | skip the intro fade (for reproducible screenshots) |
+| `&still=1` | skip the intro fade and the star-map camera intro (for reproducible screenshots) |
+| `#samples` | open the PLATO stellar samples tab |
 
 ### Interaction
 
@@ -174,6 +175,41 @@ median 3σ at N ≈ 100 (2.6σ at N = 79, P(≥3σ) = 33 %); pessimistic follow-
 errors the predicted sample shows the step at 9.8σ. The null test stays at
 ≈ 0σ.
 
+## PLATO stellar samples page (`#samples`)
+
+A second tab shows the real P4 and P5 target stars in 3D around the Sun.
+
+* **Stars**: the tPIC LOPS2 targets (v2.2.0.1, Montalto et al. 2026) flagged as P4 / P5
+  (`tPICsourceFlagNCAM_BOL` bits 3 / 2) after the pipeline's stellar quality cuts, i.e.
+  exactly the pipeline's stellar input `data/processed/plato_P4_stars.parquet` (13 102 M dwarfs)
+  and `plato_P5_stars.parquet` (158 285 FGK dwarfs/subgiants). No star is in both samples.
+* **Positions**: catalogue RA, Dec and distance → heliocentric Galactic Cartesian coordinates
+  (X → Galactic centre, Y → l = 90°, Z → NGP) with astropy; the Galactic plane is the
+  horizontal plane of the map. Checked against the catalogue's Glon/Glat (< 10⁻⁵ deg) and,
+  in `tests/stars.test.ts`, against an independent ICRS → Galactic rotation.
+* **Per-star values**: tPIC T_eff, mass, radius, magnitudes, number of cameras; uncertainties,
+  parallax and Gaia DR3 ID from the raw tPIC FITS (joined on PICid); Gaia DR3 FLAME ages
+  where available. L = R²(T_eff/5778 K)⁴ as in the pipeline.
+* **Spectral class**: not in the catalogue; assigned from T_eff alone as the nearest
+  Pecaut & Mamajek (2013) dwarf entry (`bioverse/Data/Pecaut2013.dat`) and labelled as such.
+* **Visual only**: marker sizes (∝ L^0.16, clamped), glow, and the faint background sky.
+
+Interaction: P4 / P5 / Both (the camera reframes), colour by sample or spectral class,
+class filter (double-click = only this class), hover and click for a star card, “Centre view
+on star”, reset view, distance rings. A slow camera intro runs once and stops on the first
+interaction (skipped with `?still=1` or `prefers-reduced-motion`). Statistics (counts,
+distance quantiles, class shares, distance / T_eff / mass histograms) follow the selection.
+
+Data export (needs astropy; reads the HZIED repository, writes only into this folder):
+
+```bash
+python3 scripts/export_plato_stars.py --repo <path-to-HZIED-repository>
+# → src/data/plato_stars.bin.gz (gzip, little-endian columns) + src/data/plato_stars_meta.json
+```
+
+The binary is loaded on first visit of the tab (fetch + `DecompressionStream`), so the Home
+page does not pay for it; in the single-file build it is inlined.
+
 ## Data: regenerating the export
 
 The website reads `src/data/hzied_data.json` (bundled at build time). It is
@@ -224,10 +260,13 @@ src/
   plot/       PlotView — canvas renderer and hit-testing for the radius–flux plot
   ui/         Hero (single animation loop), science panel, sections, charts, starfield
   ui/rv/      RV follow-up section: RV animation, density morph, significance chart
-  data/       pipeline export (JSON) and synthetic fallback
-scripts/      export_hzied_data.py
+  stars/      PLATO stellar samples: catalogue decoding + coordinates, selection statistics, StarMapView (three.js)
+  ui/stars/   stellar-samples page, statistics panel, star card
+  data/       pipeline export (JSON), stellar-sample export (bin.gz + meta), synthetic fallback
+scripts/      export_hzied_data.py, export_plato_stars.py
 tests/        model.test.ts — pipeline reproduction, exact evidence, posterior fit, line-up, seamless loop
               rv.test.ts    — projection, σ_M/M, ρ_norm and Welch test against the pipeline / scipy
+              stars.test.ts — P4/P5 membership, coordinates, statistics of the stellar-sample export
 ```
 
 The steam envelope is a ray-marched exponential atmosphere whose extinction is
