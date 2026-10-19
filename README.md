@@ -192,11 +192,16 @@ A second tab shows the real P4 and P5 target stars in 3D around the Sun.
   where available. L = R²(T_eff/5778 K)⁴ as in the pipeline.
 * **Spectral class**: not in the catalogue; assigned from T_eff alone as the nearest
   Pecaut & Mamajek (2013) dwarf entry (`bioverse/Data/Pecaut2013.dat`) and labelled as such.
-* **Visual only**: marker sizes (∝ L^0.16, clamped), glow, and the faint background sky.
+* **Visual only**: marker sizes (∝ L^0.16, clamped) and glow. The background sky is decorative
+  but oriented (Milky Way band along b = 0, brighter towards l = 0). The face-on disk shown in the
+  “Milky Way view” is schematic: bar + four trailing log-spiral arms (pitch 12°) and the Local arm,
+  R☉ = 8.2 kpc; it fades in with zoom and is hidden together with the reference grid.
+* Real structure is visible, e.g. the open cluster NGC 2516 at ≈ 410 pc (≈ 5× the local
+  density of sample stars within 1° of its centre at its distance).
 
 Interaction: P4 / P5 / Both (the camera reframes), colour by sample or spectral class,
 class filter (double-click = only this class), hover and click for a star card, “Centre view
-on star”, reset view, distance rings. A slow camera intro runs once and stops on the first
+on star”, reset view, Milky Way view, reference grid. A slow camera intro runs once and stops on the first
 interaction (skipped with `?still=1` or `prefers-reduced-motion`). Statistics (counts,
 distance quantiles, class shares, distance / T_eff / mass histograms) follow the selection.
 

@@ -24,6 +24,7 @@ export const CLASS_COLORS: Record<SpClass, string> = { M: '#ff6a4a', K: '#ffae63
 const FOV = 38;
 const RINGS = [50, 100, 250, 500, 1000];
 const LABEL_L = 232;                  // Galactic longitude at which the ring labels sit (deg)
+const R_SUN = 8200;                   // Sun–Galactic centre distance (pc), schematic disk only
 
 const rgb = (hex: string) => new THREE.Vector3(
   parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255);
@@ -112,7 +113,7 @@ export interface ViewOptions {
 export class StarMapView {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
-  private camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 30000);
+  private camera = new THREE.PerspectiveCamera(FOV, 1, 0.5, 200000);
   private sky = new THREE.Scene();
   private skyCamera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 10);
   private controls: OrbitControls;
@@ -209,12 +210,13 @@ export class StarMapView {
 
     this.buildGrid();
     this.buildSky();
+    this.buildGalaxy();
 
     // ── camera and controls ──
     this.controls = new OrbitControls(this.camera, canvas);
     Object.assign(this.controls, {
       enableDamping: true, dampingFactor: 0.08, rotateSpeed: 0.55, zoomSpeed: 0.9, panSpeed: 0.7,
-      minDistance: 4, maxDistance: 7000, screenSpacePanning: true, zoomToCursor: true,
+      minDistance: 4, maxDistance: 60000, screenSpacePanning: true, zoomToCursor: true,
     });
     const stopAuto = () => { this.intro = null; this.tween = null; };
     this.controls.addEventListener('start', stopAuto);
@@ -294,15 +296,24 @@ export class StarMapView {
   }
 
   private buildSky() {
-    // decorative background at infinity (rotates with the view, never moves);
-    // not data — the catalogue stars are the only stars at real positions
+    // Background at infinity: rotates with the view, never moves with it.
+    // Not data — only the catalogue stars sit at real positions.  The faint stars
+    // and the glow follow the Galactic plane (b = 0) and brighten towards the
+    // Galactic centre, so the Milky Way band appears where it is on the real sky.
     const rnd = mulberry32(2026);
-    const n = 2600, p = new Float32Array(3 * n), s = new Float32Array(n);
+    const gauss = () => Math.sqrt(-2 * Math.log(Math.max(rnd(), 1e-9))) * Math.cos(2 * Math.PI * rnd());
+    const n = 4200, p = new Float32Array(3 * n), s = new Float32Array(n);
     for (let i = 0; i < n; i++) {
-      const u = 2 * rnd() - 1, ph = 2 * Math.PI * rnd();
-      const k = Math.sqrt(1 - u * u);
-      p[3 * i] = k * Math.cos(ph); p[3 * i + 1] = u; p[3 * i + 2] = k * Math.sin(ph);
-      s[i] = rnd() < 0.05 ? 0.55 + 0.4 * rnd() : 0.12 + 0.28 * rnd();
+      let l: number, b: number;
+      if (rnd() < 0.42) {                      // isotropic field stars
+        l = 2 * Math.PI * rnd(); b = Math.asin(2 * rnd() - 1);
+      } else {                                 // disk: thin in b, concentrated towards l = 0
+        l = rnd() < 0.55 ? gauss() * 0.75 : 2 * Math.PI * rnd();
+        b = gauss() * (0.07 + 0.06 * rnd());
+      }
+      const v = fromLB(l * 180 / Math.PI, b * 180 / Math.PI, 1);
+      p[3 * i] = v.x; p[3 * i + 1] = v.y; p[3 * i + 2] = v.z;
+      s[i] = rnd() < 0.04 ? 0.55 + 0.4 * rnd() : 0.1 + 0.26 * rnd();
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(p, 3));
@@ -314,6 +325,92 @@ export class StarMapView {
         gl_FragColor = vec4(vec3(0.86, 0.9, 1.0), vB * 0.55 * exp(-r2 * 3.0)); }`,
       uniforms: { uDpr: { value: 1 } }, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
     })));
+    // diffuse band with a dark dust lane along the plane in the inner Galaxy
+    this.sky.add(new THREE.Mesh(new THREE.SphereGeometry(6, 96, 48), new THREE.ShaderMaterial({
+      side: THREE.BackSide, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+      vertexShader: 'varying vec3 vDir; void main() { vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: /* glsl */ `
+        varying vec3 vDir;
+        float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+        void main() {
+          vec3 d = normalize(vDir);
+          // scene (x, y, z) = (X, Z, -Y)
+          float l = atan(-d.z, d.x);            // −π..π, 0 = Galactic centre
+          float b = asin(clamp(d.y, -1.0, 1.0));
+          float n = 0.6 * noise(vec2(l * 9.0, b * 26.0)) + 0.4 * noise(vec2(l * 23.0, b * 61.0));
+          float width = 0.10 + 0.05 * exp(-l * l / 0.5);
+          float band = exp(-b * b / (width * width)) * (0.35 + 0.65 * exp(-l * l / 1.1));
+          float bulge = exp(-(l * l + b * b * 2.2) / 0.06);
+          float lane = 1.0 - 0.6 * exp(-b * b / 0.0012) * exp(-l * l / 1.6);
+          float a = (band * (0.55 + 0.7 * n) + 0.8 * bulge) * lane;
+          vec3 col = mix(vec3(0.62, 0.70, 0.95), vec3(1.0, 0.86, 0.66), clamp(bulge * 1.5 + exp(-l * l / 0.4) * 0.3, 0.0, 1.0));
+          gl_FragColor = vec4(col, a * 0.1);
+        }`,
+    })));
+  }
+
+  // ── schematic Milky Way disk ──────────────────────────────────────────────
+  /** Visibility of the schematic disk (rises when the view is zoomed out). */
+  private galaxyMat: THREE.ShaderMaterial | null = null;
+
+  private buildGalaxy() {
+    // Face-on Milky Way in the Galactic plane, centred on the Galactic centre at
+    // R☉ = 8.2 kpc.  Schematic: a central bar plus four trailing logarithmic arms
+    // (pitch 12°; Norma, Scutum–Centaurus, Sagittarius–Carina, Perseus) and the
+    // Local arm near the Sun.  Shape only; no data.  Units in the shader: kpc.
+    const geo = new THREE.PlaneGeometry(40000, 40000, 1, 1);
+    this.galaxyMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+      uniforms: { uOpacity: { value: 0 } },
+      vertexShader: 'varying vec2 vXY; void main() { vXY = position.xy / 1000.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: /* glsl */ `
+        uniform float uOpacity;
+        varying vec2 vXY;                       // galactocentric X, Y (kpc); Sun at (−8.2, 0)
+        float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+        void main() {
+          float R = length(vXY);
+          if (R > 17.0) discard;
+          float phi = atan(vXY.y, vXY.x);       // counter-clockwise seen from the NGP
+          const float tanp = 0.2126;            // tan 12°
+          // four-fold symmetric arm pattern; Perseus passes R = 9.9 kpc at the Sun's azimuth (π)
+          float phase = 4.0 * (phi - 3.14159265 - log(max(R, 0.3) / 9.9) / tanp);
+          float arms = pow(0.5 + 0.5 * cos(phase), 5.0) * smoothstep(2.6, 4.2, R);
+          // Local arm: short segment through R ≈ 8.4 kpc around the Sun's azimuth
+          float dphi = mod(phi, 6.2831853) - 3.14159265;
+          float rl = 8.45 * exp(dphi * 0.19);
+          float local = exp(-pow((R - rl) / 0.28, 2.0)) * exp(-dphi * dphi / 0.09) * 0.7;
+          // bar, near end towards positive longitude, ~27° to the Sun–GC line
+          float ca = cos(0.47), sa = sin(0.47);
+          vec2 q = vec2(ca * vXY.x - sa * vXY.y, sa * vXY.x + ca * vXY.y);
+          float bar = exp(-pow(q.x / 3.2, 2.0) - pow(q.y / 0.9, 2.0));
+          float bulge = exp(-R * R / 1.1);
+          float disk = exp(-R / 3.0) * (1.0 - smoothstep(13.0, 17.0, R));
+          float grain = 0.55 + 0.45 * noise(vXY * 3.1) * noise(vXY * 7.7 + 3.0);
+          float a = disk * (0.35 + 1.6 * (arms + local) * grain) + 0.5 * bar + 0.9 * bulge;
+          vec3 col = mix(vec3(0.55, 0.66, 0.95), vec3(1.0, 0.82, 0.58), clamp(bulge + 0.7 * bar + exp(-R / 2.5) * 0.4, 0.0, 1.0));
+          gl_FragColor = vec4(col, a * uOpacity);
+        }`,
+    });
+    const disk = new THREE.Mesh(geo, this.galaxyMat);
+    disk.rotation.x = -Math.PI / 2;            // plane → Galactic plane (local x = X, local y = Y)
+    disk.position.set(R_SUN, 0, 0);            // Galactic centre
+    disk.renderOrder = -1;
+    disk.frustumCulled = false;
+    this.scene.add(disk);
+    const armAt = (k: number, phi: number) => {   // point on arm k at galactocentric azimuth phi
+      const R = (9.9 / Math.pow(1.3958, k)) * Math.exp((phi - Math.PI) * 0.2126);
+      return toScene(R_SUN + 1000 * R * Math.cos(phi), 1000 * R * Math.sin(phi), 0);
+    };
+    this.addLabel('Galactic centre · 8.2 kpc', toScene(R_SUN, 0, 0), 'gal', false);
+    this.addLabel('Perseus arm', armAt(0, Math.PI + 0.55), 'gal', false);
+    this.addLabel('Sagittarius–Carina arm', armAt(1, Math.PI - 0.5), 'gal', false);
+    this.addLabel('Scutum–Centaurus arm', armAt(2, Math.PI - 0.9), 'gal', false);
+    const pl = Math.PI - 0.24, rl = 8450 * Math.exp(-0.24 * 0.19);
+    this.addLabel('Local arm', toScene(R_SUN + rl * Math.cos(pl), rl * Math.sin(pl), 0), 'gal', false);
   }
 
   // ── public API ────────────────────────────────────────────────────────────
@@ -352,6 +449,26 @@ export class StarMapView {
   }
 
   resetView() { this.frameVisible(this.opts.reducedMotion ? 0 : 1.4, true); }
+
+  /** Fly out to a view from above the Galactic plane that shows the schematic disk, Sun and samples. */
+  galaxyView() {
+    const target = new THREE.Vector3(R_SUN * 0.45, 0, 0);
+    const sph0 = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
+    // looking down from the north, Galactic centre "up" on screen (Sun at the bottom)
+    const end = new THREE.Spherical(1, 0.42, -Math.PI / 2);
+    let dAz = end.theta - sph0.theta;
+    dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz));
+    const dist = 27000;
+    if (this.opts.reducedMotion) {
+      this.intro = null;
+      this.controls.target.copy(target);
+      this.camera.position.copy(target).add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(dist, end.phi, end.theta)));
+      return;
+    }
+    this.tween = null;
+    this.introFrom = this.controls.target.clone();
+    this.intro = { t0: performance.now(), dur: 3200, target, dist, az: [sph0.theta, sph0.theta + dAz], pol: [sph0.phi, end.phi], d0: sph0.radius };
+  }
 
   dispose() {
     cancelAnimationFrame(this.raf);
@@ -565,6 +682,10 @@ export class StarMapView {
       this.setHover(this.pick(this.pointer.x, this.pointer.y, 9));
     }
 
+    // the schematic disk stays a faint hint at sample scale and fills in when zoomed out
+    const camR = this.camera.position.length();
+    if (this.galaxyMat) this.galaxyMat.uniforms.uOpacity.value = this.grid.visible ? 0.07 + 0.33 * THREE.MathUtils.smoothstep(camR, 2500, 20000) : 0;
+
     this.renderer.clear();
     this.skyCamera.quaternion.copy(this.camera.quaternion);
     this.renderer.render(this.sky, this.skyCamera);
@@ -583,6 +704,8 @@ export class StarMapView {
       const off = behind || x < -40 || x > this.width + 40 || y < -20 || y > this.height + 20;
       // ring labels far larger than the current view are clutter
       const r = l.pos.length();
+      const gal = l.el.classList.contains('gal');
+      if (gal && (!this.grid.visible || this.camera.position.length() < 9000)) { l.el.style.opacity = '0'; continue; }
       const tooBig = l.el.classList.contains('ring') && r > dist * 2.2;
       const tooSmall = l.el.classList.contains('ring') && r < dist * 0.04;
       l.el.style.opacity = off || tooBig || tooSmall ? '0' : '';

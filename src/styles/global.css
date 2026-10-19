@@ -403,6 +403,7 @@ table.prov td { color: var(--ink-2); }
 }
 .map-label.axis { color: rgba(190, 205, 230, 0.42); }
 .map-label.field { color: rgba(233, 237, 244, 0.6); }
+.map-label.gal { font-family: var(--serif); font-style: italic; font-size: 13px; color: rgba(200, 212, 240, 0.5); }
 .map-label.sun { font-family: var(--sans); font-size: 12px; color: var(--warm-white); margin: -22px 0 0 10px; letter-spacing: 0.02em; }
 
 .map-loading { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 10px; z-index: 5; color: var(--ink-2); font-size: 13px; text-align: center; padding: 0 var(--gutter); }
@@ -437,7 +438,8 @@ table.prov td { color: var(--ink-2); }
 .cls[aria-pressed='true'] { background: rgba(246, 236, 222, 0.08); color: var(--ink); }
 .cls[aria-pressed='false'] .sw { opacity: 0.3; }
 .cls:disabled { cursor: default; opacity: 0.45; }
-.ctl-row { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-top: 4px; }
+.ctl-row .check { flex-basis: 100%; }
 
 .st-count { display: flex; align-items: baseline; gap: 8px; }
 .st-count .v { font-family: var(--serif); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }

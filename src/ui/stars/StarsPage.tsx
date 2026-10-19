@@ -179,7 +179,8 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
 
           <div className="ctl-row">
             <button className="btn" onClick={() => viewRef.current?.resetView()}>Reset view</button>
-            <label className="check"><input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> Distance rings</label>
+            <button className="btn" onClick={() => viewRef.current?.galaxyView()} title="Zoom out to a schematic Milky Way, seen from above">Milky Way view</button>
+            <label className="check"><input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> Reference grid</label>
           </div>
         </aside>
 
@@ -203,8 +204,8 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
           <div className="section-head">
             <div className="section-num">Data &amp; method</div>
             <div>
-              <h2 id="sample-data">What the map shows</h2>
-              <p className="lede">Catalogue stars at their measured positions; nothing on the map is simulated. The thesis places simulated planets around these stars.</p>
+              <h2 id="sample-data">Catalogue, coordinates and caveats</h2>
+              <p className="lede">Every point is a catalogued star at its measured position, and none of them is simulated. The thesis places its simulated planets around these stars.</p>
             </div>
           </div>
           {m && <Notes m={m} />}
@@ -230,13 +231,13 @@ function Notes({ m }: { m: StarMeta }) {
         <h3>How the positions are computed</h3>
         <p>RA, Dec and the tPIC distance are converted to heliocentric Cartesian coordinates in the Galactic frame: X towards the Galactic centre, Y in the direction of rotation, Z towards the north Galactic pole. The map's horizontal plane is the Galactic plane, and the rings mark 50 to 1000 pc from the Sun.</p>
         <p>The tPIC distances are based on Gaia DR3 parallaxes; the median ratio of distance to inverse parallax is {(P5.d_plx_ratio_median ?? NaN).toFixed(3)} (P5) and {(P4.d_plx_ratio_median ?? NaN).toFixed(3)} (P4). Median distance uncertainties are {pct(P5.rel_e_d_median)} and {pct(P4.rel_e_d_median)}, much smaller than the structure visible on the map.</p>
-        <p>As a check, the computed Galactic longitudes and latitudes agree with the catalogue's own to better than 10⁻⁵ degrees for every star.</p>
+        <p>As a check, the computed Galactic longitudes and latitudes agree with the catalogue's own to better than 10⁻⁵ degrees for every star. Real structure shows up as well: the compact clump at about 410 pc is the open cluster NGC 2516, with roughly five times the field density of sample stars within 1° of its centre at its distance.</p>
       </div>
       <div className="prose">
         <h3>Limits of the picture</h3>
         <p>The cone is the shape of one PLATO pointing, not of the solar neighbourhood: outside the field the sky is not empty, it is just not in these samples. Both cones end where the magnitude limits end. The most luminous P5 stars, F-type subgiants, stay brighter than V&nbsp;=&nbsp;13 out to {(P5.d_max / 1000).toFixed(1)} kpc, while even early M dwarfs drop below V&nbsp;=&nbsp;16 by about {Math.round(P4.d_max / 10) * 10} pc.</p>
         <p>The spectral classes are not measured. They are assigned from T<sub>eff</sub> using the Pecaut &amp; Mamajek (2013) dwarf sequence. With T<sub>eff</sub> uncertainties of about 200 K, a star near a class boundary (K/M at about 3850 K) could belong to either class. P5 contains subgiants, for which the dwarf class only labels the temperature.</p>
-        <p>Point sizes and the glow are for readability. The faint background stars are decorative and do not mark real positions.</p>
+        <p>Point sizes and the glow are for readability. The background is decorative but oriented: the faint band follows the Galactic plane and brightens towards the Galactic centre, as the Milky Way does on the sky. The face-on disk seen in the Milky Way view is a schematic: a bar and logarithmic spiral arms (pitch 12°) with the Sun 8.2 kpc from the centre. It shows the scale of the samples and is not a map of the Galaxy.</p>
       </div>
     </div>
   );
