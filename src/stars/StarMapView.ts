@@ -24,6 +24,7 @@ export const CLASS_COLORS: Record<SpClass, string> = { M: '#ff6a4a', K: '#ffae63
 const FOV = 38;
 const RINGS = [50, 100, 250, 500, 1000];
 const LABEL_L = 232;                  // Galactic longitude at which the ring labels sit (deg)
+const PC_TO_LY = 3.26156;             // light years per parsec
 const R_SUN = 8200;                   // Sun–Galactic centre distance (pc), schematic disk only
 
 const rgb = (hex: string) => new THREE.Vector3(
@@ -275,7 +276,7 @@ export class StarMapView {
     for (const r of RINGS) {
       const pts = Array.from({ length: 256 }, (_, k) => fromLB((k / 256) * 360, 0, r));
       line(pts, 0x9fb4d8, r === 1000 ? 0.16 : 0.13, true);
-      this.addLabel(`${r} pc`, fromLB(LABEL_L, 0, r), 'ring');
+      this.addLabel(`${r} pc · ${(r * PC_TO_LY).toFixed(1)} ly`, fromLB(LABEL_L, 0, r), 'ring');
     }
     for (let l = 0; l < 360; l += 30) {
       line([fromLB(l, 0, l === 0 ? 0 : 50), fromLB(l, 0, 1000)], 0x9fb4d8, l === 0 ? 0.22 : 0.05);
