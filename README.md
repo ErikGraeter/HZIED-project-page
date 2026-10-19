@@ -192,10 +192,15 @@ A second tab shows the real P4 and P5 target stars in 3D around the Sun.
   where available. L = R²(T_eff/5778 K)⁴ as in the pipeline.
 * **Spectral class**: not in the catalogue; assigned from T_eff alone as the nearest
   Pecaut & Mamajek (2013) dwarf entry (`bioverse/Data/Pecaut2013.dat`) and labelled as such.
-* **Visual only**: marker sizes (∝ L^0.16, clamped) and glow. The background sky is decorative
-  but oriented (Milky Way band along b = 0, brighter towards l = 0). The face-on disk shown in the
-  “Milky Way view” is schematic: bar + four trailing log-spiral arms (pitch 12°) and the Local arm,
-  R☉ = 8.2 kpc; it fades in with zoom and is hidden together with the reference grid.
+* **Visual only**: marker sizes (∝ L^0.16, clamped) and glow; the background sky is decorative
+  but oriented (Milky Way band along b = 0, brighter towards l = 0).
+* **Milky Way context layer** (toggle “Show/Hide Galactic disk”, fades; on by default): haze in the
+  same Galactic frame as the stars — nine stacked noise layers through ±0.5 kpc (thin arms, thicker
+  disk and bulge) plus ~7000 soft clumps along the arms. Geometry: R☉ = 8.15 kpc (Reid et al. 2019),
+  Z☉ = 20.8 pc above the midplane (Bennett & Bovy 2019), four trailing log-spiral arms with pitch 12.8°
+  (Vallée 2008) anchored so that Sagittarius–Carina (≈ 7.0 kpc) and Perseus (≈ 10.0 kpc) bracket the
+  Solar circle at the Sun's azimuth, Local arm at ≈ 8.6 kpc, bar at 27° (near end at l > 0).
+  Approximate to a few hundred pc; orientation only. “Milky Way view” flies out to a view from the north.
 * Real structure is visible, e.g. the open cluster NGC 2516 at ≈ 410 pc (≈ 5× the local
   density of sample stars within 1° of its centre at its distance).
 

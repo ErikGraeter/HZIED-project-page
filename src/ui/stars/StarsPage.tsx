@@ -29,6 +29,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
   const [sel, setSel] = useState<Selection>({ sample: 'both', classes: ALL });
   const [mode, setMode] = useState<ColorMode>('sample');
   const [grid, setGrid] = useState(true);
+  const [galaxy, setGalaxy] = useState(true);
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null);
   const [picked, setPicked] = useState(-1);
   const [intro, setIntro] = useState(true);
@@ -81,6 +82,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
   }, [sel]);
   useEffect(() => { viewRef.current?.setColorMode(mode); }, [mode, cat]);
   useEffect(() => { viewRef.current?.setGrid(grid); }, [grid, cat]);
+  useEffect(() => { viewRef.current?.setGalaxy(galaxy); }, [galaxy, cat]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -179,7 +181,8 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
 
           <div className="ctl-row">
             <button className="btn" onClick={() => viewRef.current?.resetView()}>Reset view</button>
-            <button className="btn" onClick={() => viewRef.current?.galaxyView()} title="Zoom out to a schematic Milky Way, seen from above">Milky Way view</button>
+            <button className="btn" onClick={() => { setGalaxy(true); viewRef.current?.galaxyView(); }} title="Zoom out to the Milky Way context, seen from above">Milky Way view</button>
+            <button className="btn" aria-pressed={galaxy} onClick={() => setGalaxy((g) => !g)}>{galaxy ? 'Hide Galactic disk' : 'Show Galactic disk'}</button>
             <label className="check"><input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} /> Reference grid</label>
           </div>
         </aside>
@@ -237,7 +240,8 @@ function Notes({ m }: { m: StarMeta }) {
         <h3>Limits of the picture</h3>
         <p>The cone is the shape of one PLATO pointing, not of the solar neighbourhood: outside the field the sky is not empty, it is just not in these samples. Both cones end where the magnitude limits end. The most luminous P5 stars, F-type subgiants, stay brighter than V&nbsp;=&nbsp;13 out to {(P5.d_max / 1000).toFixed(1)} kpc, while even early M dwarfs drop below V&nbsp;=&nbsp;16 by about {Math.round(P4.d_max / 10) * 10} pc.</p>
         <p>The spectral classes are not measured. They are assigned from T<sub>eff</sub> using the Pecaut &amp; Mamajek (2013) dwarf sequence. With T<sub>eff</sub> uncertainties of about 200 K, a star near a class boundary (K/M at about 3850 K) could belong to either class. P5 contains subgiants, for which the dwarf class only labels the temperature.</p>
-        <p>Point sizes and the glow are for readability. The background is decorative but oriented: the faint band follows the Galactic plane and brightens towards the Galactic centre, as the Milky Way does on the sky. The face-on disk seen in the Milky Way view is a schematic: a bar and logarithmic spiral arms (pitch 12°) with the Sun 8.2 kpc from the centre. It shows the scale of the samples and is not a map of the Galaxy.</p>
+        <p>Point sizes and the glow are for readability. The faint background band follows the Galactic plane and brightens towards the Galactic centre, as the Milky Way does on the sky.</p>
+        <p>The Galactic disk is context, not data. It is drawn as haze in the same Galactic frame as the stars: the Sun 8.15 kpc from the centre (Reid et al. 2019) and 21 pc above the midplane (Bennett &amp; Bovy 2019), four logarithmic spiral arms with a 12.8° pitch (Vallée 2008), the Local arm just outside the Sun, and a central bar. Arm positions are approximate to a few hundred parsecs; the button above hides the layer.</p>
       </div>
     </div>
   );

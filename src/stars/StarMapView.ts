@@ -25,7 +25,8 @@ const FOV = 38;
 const RINGS = [50, 100, 250, 500, 1000];
 const LABEL_L = 232;                  // Galactic longitude at which the ring labels sit (deg)
 const PC_TO_LY = 3.26156;             // light years per parsec
-const R_SUN = 8200;                   // Sun–Galactic centre distance (pc), schematic disk only
+const R_SUN = 8150;                   // Sun–Galactic centre distance (pc; Reid et al. 2019), context layer only
+const Z_SUN = 20.8;                   // height of the Sun above the Galactic midplane (pc; Bennett & Bovy 2019)
 
 const rgb = (hex: string) => new THREE.Vector3(
   parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255);
@@ -352,67 +353,146 @@ export class StarMapView {
     })));
   }
 
-  // ── schematic Milky Way disk ──────────────────────────────────────────────
-  /** Visibility of the schematic disk (rises when the view is zoomed out). */
-  private galaxyMat: THREE.ShaderMaterial | null = null;
+  // ── Milky Way context layer ───────────────────────────────────────────────
+  // Schematic but placed where it is: Galactic frame, Sun at R☉ = 8.15 kpc from the
+  // centre and Z☉ = 20.8 pc above the midplane.  Four trailing logarithmic arms with
+  // pitch 12.8° (Vallée 2008), anchored at the Sun's azimuth so that Sagittarius–Carina
+  // (≈ 7.0 kpc) and Perseus (≈ 10.0 kpc) bracket the Solar circle, plus the Local arm
+  // just outside the Sun (cf. Reid et al. 2019); a bar at 27° with its near end at l > 0.
+  // Drawn as haze: stacked noise layers through the disk thickness and soft clumps
+  // along the arms.  Orientation only — not data.
+  private galaxy = new THREE.Group();
+  private galU = { uOpacity: { value: 0 }, uFade: { value: 1 } };
+  private galaxyOn = true;
+  private galFade = 1;
 
   private buildGalaxy() {
-    // Face-on Milky Way in the Galactic plane, centred on the Galactic centre at
-    // R☉ = 8.2 kpc.  Schematic: a central bar plus four trailing logarithmic arms
-    // (pitch 12°; Norma, Scutum–Centaurus, Sagittarius–Carina, Perseus) and the
-    // Local arm near the Sun.  Shape only; no data.  Units in the shader: kpc.
+    const U = this.galU;
+    const DENSITY = /* glsl */ `
+      const float PI = 3.14159265;
+      const float TANP = 0.2272;              // tan 12.8°
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+      float fbm(vec2 p) { return 0.55 * noise(p) + 0.3 * noise(p * 2.13 + 7.1) + 0.15 * noise(p * 4.7 + 1.3); }
+      // in-plane structure at galactocentric (x, y) in kpc; Sun at (−8.15, 0)
+      float arms(vec2 q, float R, float phi) {
+        float ph = 4.0 * (phi - PI - log(max(R, 0.3) / 10.0) / TANP);
+        float a = pow(0.5 + 0.5 * cos(ph), 4.0) * smoothstep(2.4, 4.0, R);
+        float d = mod(phi, 2.0 * PI) - PI;   // Local arm, a short segment near the Sun
+        float rl = 8.6 * exp(d * 0.2);
+        a += 0.75 * exp(-pow((R - rl) / 0.3, 2.0)) * exp(-d * d / 0.12);
+        return a;
+      }
+      float barBulge(vec2 q) {
+        float ca = cos(0.47), sa = sin(0.47);
+        vec2 b = vec2(ca * q.x - sa * q.y, sa * q.x + ca * q.y);
+        return 0.55 * exp(-pow(b.x / 3.4, 2.0) - pow(b.y / 0.95, 2.0)) + exp(-dot(q, q) / 1.2);
+      }`;
+    // stacked haze layers through the disk (heights in kpc relative to the midplane)
+    const layers = [-0.48, -0.36, -0.24, -0.12, 0, 0.12, 0.24, 0.36, 0.48];
     const geo = new THREE.PlaneGeometry(40000, 40000, 1, 1);
-    this.galaxyMat = new THREE.ShaderMaterial({
-      transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-      uniforms: { uOpacity: { value: 0 } },
-      vertexShader: 'varying vec2 vXY; void main() { vXY = position.xy / 1000.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: /* glsl */ `
-        uniform float uOpacity;
-        varying vec2 vXY;                       // galactocentric X, Y (kpc); Sun at (−8.2, 0)
-        float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-        float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-          return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
-        void main() {
-          float R = length(vXY);
-          if (R > 17.0) discard;
-          float phi = atan(vXY.y, vXY.x);       // counter-clockwise seen from the NGP
-          const float tanp = 0.2126;            // tan 12°
-          // four-fold symmetric arm pattern; Perseus passes R = 9.9 kpc at the Sun's azimuth (π)
-          float phase = 4.0 * (phi - 3.14159265 - log(max(R, 0.3) / 9.9) / tanp);
-          float arms = pow(0.5 + 0.5 * cos(phase), 5.0) * smoothstep(2.6, 4.2, R);
-          // Local arm: short segment through R ≈ 8.4 kpc around the Sun's azimuth
-          float dphi = mod(phi, 6.2831853) - 3.14159265;
-          float rl = 8.45 * exp(dphi * 0.19);
-          float local = exp(-pow((R - rl) / 0.28, 2.0)) * exp(-dphi * dphi / 0.09) * 0.7;
-          // bar, near end towards positive longitude, ~27° to the Sun–GC line
-          float ca = cos(0.47), sa = sin(0.47);
-          vec2 q = vec2(ca * vXY.x - sa * vXY.y, sa * vXY.x + ca * vXY.y);
-          float bar = exp(-pow(q.x / 3.2, 2.0) - pow(q.y / 0.9, 2.0));
-          float bulge = exp(-R * R / 1.1);
-          float disk = exp(-R / 3.0) * (1.0 - smoothstep(13.0, 17.0, R));
-          float grain = 0.55 + 0.45 * noise(vXY * 3.1) * noise(vXY * 7.7 + 3.0);
-          float a = disk * (0.35 + 1.6 * (arms + local) * grain) + 0.5 * bar + 0.9 * bulge;
-          vec3 col = mix(vec3(0.55, 0.66, 0.95), vec3(1.0, 0.82, 0.58), clamp(bulge + 0.7 * bar + exp(-R / 2.5) * 0.4, 0.0, 1.0));
-          gl_FragColor = vec4(col, a * uOpacity);
-        }`,
+    layers.forEach((z, k) => {
+      const mat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+        uniforms: { ...U, uZ: { value: z }, uSeed: { value: k * 3.7 } },
+        vertexShader: 'varying vec2 vXY; void main() { vXY = position.xy / 1000.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: DENSITY + /* glsl */ `
+          uniform float uOpacity, uFade, uZ, uSeed;
+          varying vec2 vXY;
+          void main() {
+            float R = length(vXY);
+            if (R > 17.0) discard;
+            float phi = atan(vXY.y, vXY.x);
+            // vertical profiles: arms are thin, the old disk and the bulge thicker
+            float wArm = exp(-uZ * uZ / 0.022), wDisk = exp(-abs(uZ) / 0.3), wBul = exp(-uZ * uZ / 0.35);
+            float mist = fbm(vXY * 1.6 + uSeed) * fbm(vXY * 4.3 - uSeed);
+            float disk = exp(-R / 3.0) * (1.0 - smoothstep(12.5, 17.0, R));
+            float a = disk * (0.22 * wDisk + 2.6 * wArm * arms(vXY, R, phi) * (0.3 + 1.4 * mist)) + 0.4 * wBul * barBulge(vXY);
+            vec3 col = mix(vec3(0.50, 0.62, 0.95), vec3(1.0, 0.80, 0.55), clamp(barBulge(vXY) + exp(-R / 2.2) * 0.5, 0.0, 1.0));
+            gl_FragColor = vec4(col, a * uOpacity * uFade * 0.16);
+          }`,
+      });
+      const m = new THREE.Mesh(geo, mat);
+      m.rotation.x = -Math.PI / 2;               // local (x, y) → Galactic (X, Y)
+      m.position.set(R_SUN, -Z_SUN + 1000 * z, 0);
+      m.renderOrder = -2;
+      m.frustumCulled = false;
+      this.galaxy.add(m);
     });
-    const disk = new THREE.Mesh(geo, this.galaxyMat);
-    disk.rotation.x = -Math.PI / 2;            // plane → Galactic plane (local x = X, local y = Y)
-    disk.position.set(R_SUN, 0, 0);            // Galactic centre
-    disk.renderOrder = -1;
-    disk.frustumCulled = false;
-    this.scene.add(disk);
-    const armAt = (k: number, phi: number) => {   // point on arm k at galactocentric azimuth phi
-      const R = (9.9 / Math.pow(1.3958, k)) * Math.exp((phi - Math.PI) * 0.2126);
-      return toScene(R_SUN + 1000 * R * Math.cos(phi), 1000 * R * Math.sin(phi), 0);
+
+    // soft clumps along the arms (star-forming regions, seen as nebulous knots)
+    const rnd = mulberry32(1987);
+    const armDensity = (x: number, y: number) => {
+      const R = Math.hypot(x, y), phi = Math.atan2(y, x);
+      const ph = 4 * (phi - Math.PI - Math.log(Math.max(R, 0.3) / 10) / 0.2272);
+      let a = Math.pow(0.5 + 0.5 * Math.cos(ph), 6) * (R > 3 ? 1 : 0);
+      const d = (((phi % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
+      a += 0.8 * Math.exp(-(((R - 8.6 * Math.exp(d * 0.2)) / 0.3) ** 2)) * Math.exp(-d * d / 0.12);
+      return a * Math.exp(-R / 4.5) * (R < 15 ? 1 : 0);
     };
-    this.addLabel('Galactic centre · 8.2 kpc', toScene(R_SUN, 0, 0), 'gal', false);
+    // ~4500 clumps of 0.2–0.6 kpc: nebulous texture without a dotted look
+    const N = 4500, pos = new Float32Array(3 * N), size = new Float32Array(N), tint = new Float32Array(N);
+    let n = 0, guard = 0;
+    const peak = armDensity(-3.2, 0.01) + 0.5;
+    while (n < N && guard++ < 2e6) {
+      const x = (rnd() * 2 - 1) * 15, y = (rnd() * 2 - 1) * 15;
+      if (rnd() * peak > armDensity(x, y)) continue;
+      const g = Math.sqrt(-2 * Math.log(Math.max(rnd(), 1e-9))) * Math.cos(2 * Math.PI * rnd());
+      const v = toScene(R_SUN + 1000 * x, 1000 * y, -Z_SUN + 90 * g);
+      pos[3 * n] = v.x; pos[3 * n + 1] = v.y; pos[3 * n + 2] = v.z;
+      size[n] = 180 + 420 * rnd() * rnd();
+      tint[n] = rnd();
+      n++;
+    }
+    const cg = new THREE.BufferGeometry();
+    cg.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0, 3 * n), 3));
+    cg.setAttribute('aSize', new THREE.BufferAttribute(size.subarray(0, n), 1));
+    cg.setAttribute('aTint', new THREE.BufferAttribute(tint.subarray(0, n), 1));
+    const clumps = new THREE.Points(cg, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+      uniforms: { ...U, uScale: this.mat.uniforms.uScale, uMaxPx: { value: 110 } },
+      vertexShader: /* glsl */ `
+        attribute float aSize; attribute float aTint;
+        uniform float uScale, uMaxPx;
+        varying float vA; varying float vT;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * mv;
+          float px = aSize * uScale / max(-mv.z, 1.0);
+          gl_PointSize = min(px, uMaxPx);
+          // keep the light of clamped clumps constant; hide clumps close to the camera
+          vA = min(1.0, uMaxPx / max(px, 1.0)) * smoothstep(1500.0, 4500.0, -mv.z);
+          vT = aTint;
+        }`,
+      fragmentShader: /* glsl */ `
+        uniform float uOpacity, uFade;
+        varying float vA; varying float vT;
+        void main() {
+          float r2 = dot(gl_PointCoord * 2.0 - 1.0, gl_PointCoord * 2.0 - 1.0);
+          if (r2 > 1.0) discard;
+          vec3 col = mix(vec3(0.55, 0.68, 1.0), vec3(0.95, 0.75, 0.85), step(0.85, vT));
+          gl_FragColor = vec4(col, exp(-r2 * 4.5) * (1.0 - r2) * vA * uOpacity * uFade * 0.075);
+        }`,
+    }));
+    clumps.frustumCulled = false;
+    clumps.renderOrder = -1;
+    this.galaxy.add(clumps);
+    this.scene.add(this.galaxy);
+
+    const armAt = (k: number, phi: number) => {   // point on arm k at galactocentric azimuth phi
+      const R = (10.0 / Math.pow(1.4289, k)) * Math.exp((phi - Math.PI) * 0.2272);
+      return toScene(R_SUN + 1000 * R * Math.cos(phi), 1000 * R * Math.sin(phi), -Z_SUN);
+    };
+    this.addLabel(`Galactic centre · ${(R_SUN / 1000).toFixed(2)} kpc`, toScene(R_SUN, 0, -Z_SUN), 'gal', false);
     this.addLabel('Perseus arm', armAt(0, Math.PI + 0.55), 'gal', false);
     this.addLabel('Sagittarius–Carina arm', armAt(1, Math.PI - 0.5), 'gal', false);
     this.addLabel('Scutum–Centaurus arm', armAt(2, Math.PI - 0.9), 'gal', false);
-    const pl = Math.PI - 0.24, rl = 8450 * Math.exp(-0.24 * 0.19);
-    this.addLabel('Local arm', toScene(R_SUN + rl * Math.cos(pl), rl * Math.sin(pl), 0), 'gal', false);
+    const pl = Math.PI - 0.24, rl = 8600 * Math.exp(-0.24 * 0.2);
+    this.addLabel('Local arm', toScene(R_SUN + rl * Math.cos(pl), rl * Math.sin(pl), -Z_SUN), 'gal', false);
   }
+
+  setGalaxy(on: boolean) { this.galaxyOn = on; if (this.opts.reducedMotion) this.galFade = on ? 1 : 0; }
 
   // ── public API ────────────────────────────────────────────────────────────
   start() {
@@ -453,6 +533,7 @@ export class StarMapView {
 
   /** Fly out to a view from above the Galactic plane that shows the schematic disk, Sun and samples. */
   galaxyView() {
+    this.galaxyOn = true;
     const target = new THREE.Vector3(R_SUN * 0.45, 0, 0);
     const sph0 = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
     // looking down from the north, Galactic centre "up" on screen (Sun at the bottom)
@@ -685,7 +766,10 @@ export class StarMapView {
 
     // the schematic disk stays a faint hint at sample scale and fills in when zoomed out
     const camR = this.camera.position.length();
-    if (this.galaxyMat) this.galaxyMat.uniforms.uOpacity.value = this.grid.visible ? 0.07 + 0.33 * THREE.MathUtils.smoothstep(camR, 2500, 20000) : 0;
+    this.galU.uOpacity.value = 0.45 + 0.55 * THREE.MathUtils.smoothstep(camR, 2500, 20000);
+    this.galFade += ((this.galaxyOn ? 1 : 0) - this.galFade) * (this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * 4));
+    this.galU.uFade.value = this.galFade;
+    this.galaxy.visible = this.galFade > 0.003;
 
     this.renderer.clear();
     this.skyCamera.quaternion.copy(this.camera.quaternion);
@@ -706,7 +790,7 @@ export class StarMapView {
       // ring labels far larger than the current view are clutter
       const r = l.pos.length();
       const gal = l.el.classList.contains('gal');
-      if (gal && (!this.grid.visible || this.camera.position.length() < 9000)) { l.el.style.opacity = '0'; continue; }
+      if (gal && (!this.galaxyOn || this.camera.position.length() < 9000)) { l.el.style.opacity = '0'; continue; }
       const tooBig = l.el.classList.contains('ring') && r > dist * 2.2;
       const tooSmall = l.el.classList.contains('ring') && r < dist * 0.04;
       l.el.style.opacity = off || tooBig || tooSmall ? '0' : '';
