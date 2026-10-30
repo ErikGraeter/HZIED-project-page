@@ -205,6 +205,18 @@ A second tab shows the real P4 and P5 target stars in 3D around the Sun.
   the median position of the selected sample stars (computed by the exporter; hidden with the reference grid) (≈ 5× the local
   density of sample stars within 1° of its centre at its distance).
 
+* **Stellar view** (button, or “Stellar view” on a star card): the camera flies into the sample to the
+  selected star (without a selection, the visible star closest to the centroid of the selection) and orbits
+  it at AU scale; every other star stays at its catalogue position, so the sky around is the real sample
+  seen from there (the Sun is labelled). Around the star: three illustrative planets — hot with a steam
+  envelope (S_abs = 900 W m⁻², 0.6 M⊕), hot bare rock (480 W m⁻², 1.4 M⊕), temperate (170 W m⁻², 1 M⊕) —
+  at a = √(238 W m⁻² · L / S_abs) AU, Kepler periods (sped up), rocky radii from the dry branch and the steam
+  planet's transit radius from the AGNI steam table at the default wrr; the runaway threshold
+  (S_abs = 280 W m⁻²) is drawn as a dashed ring with the hot zone shaded. Orbits to scale; star (×8),
+  planets and envelope (×7) enlarged. Every click flies in through the sample (≈ 7 s, the view swinging round so
+  the neighbours stream past); the planets orbit and rotate slowly. From inside, clicking another star and “Stellar view” flies over to it;
+  “Back to the map” (or Esc) returns. Code: `src/stars/system.ts`, `src/stars/SystemView.ts`.
+
 Interaction: P4 / P5 / Both (the camera reframes), colour by sample or spectral class,
 class filter (double-click = only this class), hover and click for a star card, “Centre view
 on star”, reset view, Milky Way view, reference grid. A slow camera intro runs once and stops on the first

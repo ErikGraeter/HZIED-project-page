@@ -8,12 +8,19 @@
 // All stars are one THREE.Points draw call.  Sample/class filtering and the
 // colour mode are shader uniforms, so changing them costs nothing; each of the
 // 8 sample × class groups fades in and out smoothly.
+//
+// Stellar view: the camera flies into the sample to one star and orbits it at
+// AU scale (OrbitControls at distances of ~10⁻⁵ pc).  The star's illustrative
+// planetary system is drawn on top by SystemView in its own units; the map
+// itself is unchanged, so every other star stays at its real position.
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { BIT, CLASSES, type SpClass, type StarCatalog } from './catalog';
 import { sampleBits, type Selection } from './stats';
 import { mulberry32 } from '../model/rng';
+import { SystemView } from './SystemView';
+import { AU_PC, type StellarSystem } from './system';
 
 export type ColorMode = 'sample' | 'class';
 
@@ -105,11 +112,30 @@ const RING_FRAG = /* glsl */ `
 
 interface Tween { t0: number; dur: number; fromT: THREE.Vector3; toT: THREE.Vector3; fromD: number; toD: number }
 interface Intro { t0: number; dur: number; target: THREE.Vector3; dist: number; az: [number, number]; pol: [number, number]; d0: number }
+/**
+ * Camera flight between the map and a star: if the camera is too close to see the
+ * destination, first a zoom out to dm (ms: dur[0]); then one continuous flight
+ * (dur[1]) in which the distance shrinks or grows logarithmically, the target
+ * glides over during the fraction `tw` of the flight and the view swings round.
+ */
+interface Dive {
+  t0: number; dur: [number, number];
+  T0: THREE.Vector3; T1: THREE.Vector3; d0: number; dm: number; d1: number;
+  az: [number, number]; pol: [number, number]; tw: [number, number];
+  onSwitch?: () => void; switched: boolean; onDone?: () => void;
+}
+/** Camera distance of the stellar view, in system units (cold orbit = 10). */
+const STELLAR_DIST = 30;
+const smooth01 = (x: number) => { const u = Math.min(1, Math.max(0, x)); return u * u * (3 - 2 * u); };
 
 export interface ViewOptions {
   reducedMotion: boolean;
+  /** Skip the camera intro (still screenshots); user-triggered flights still animate. */
+  skipIntro?: boolean;
   onHover: (i: number, x: number, y: number) => void;
   onSelect: (i: number) => void;
+  /** Stellar view entered (system) or left (null); called when the flight starts. */
+  onStellar?: (sys: StellarSystem | null) => void;
 }
 
 export class StarMapView {
@@ -135,6 +161,16 @@ export class StarMapView {
   private last = 0;
   private tween: Tween | null = null;
   private intro: Intro | null = null;
+  private dive: Dive | null = null;
+  private system: SystemView;
+  /** System of the stellar view (set when entering, cleared once the camera is back on the map). */
+  private stellar: StellarSystem | null = null;
+  private mapView: { target: THREE.Vector3; pos: THREE.Vector3 } | null = null;
+  private gridOn = true;
+  private clock = 0;
+  private dpr = 1;
+  /** Marker size factor: smaller in the stellar view, where the neighbours fill the sky. */
+  private sizeK = 1;
   private width = 1;
   private height = 1;
   private pointer: { x: number; y: number; dirty: boolean; inside: boolean } = { x: 0, y: 0, dirty: false, inside: false };
@@ -214,6 +250,7 @@ export class StarMapView {
     this.buildGrid();
     this.buildSky();
     this.buildGalaxy();
+    this.system = new SystemView(labelLayer);
 
     // ── camera and controls ──
     this.controls = new OrbitControls(this.camera, canvas);
@@ -221,7 +258,7 @@ export class StarMapView {
       enableDamping: true, dampingFactor: 0.08, rotateSpeed: 0.55, zoomSpeed: 0.9, panSpeed: 0.7,
       minDistance: 4, maxDistance: 60000, screenSpacePanning: true, zoomToCursor: true,
     });
-    const stopAuto = () => { this.intro = null; this.tween = null; };
+    const stopAuto = () => { this.intro = null; this.tween = null; this.controls.autoRotate = false; };
     this.controls.addEventListener('start', stopAuto);
     this.disposers.push(() => this.controls.removeEventListener('start', stopAuto));
 
@@ -546,11 +583,11 @@ export class StarMapView {
     this.sel = sel;
     if (this.selected >= 0 && !this.visTarget[this.group[this.selected]]) { this.select(-1); this.opts.onSelect(-1); }
     if (opts.intro) this.startIntro();
-    else if (opts.frame) this.frameVisible(this.opts.reducedMotion ? 0 : 1.6);
+    else if (opts.frame && !this.stellar) this.frameVisible(this.opts.reducedMotion ? 0 : 1.6);
   }
 
   setColorMode(m: ColorMode) { this.mat.uniforms.uMode.value = m === 'class' ? 1 : 0; }
-  setGrid(on: boolean) { this.grid.visible = on; }
+  setGrid(on: boolean) { this.gridOn = on; this.grid.visible = on && !this.stellar; }
 
   select(i: number) {
     this.selected = i;
@@ -560,15 +597,142 @@ export class StarMapView {
 
   /** Centre the view on a star (keeps the viewing direction). */
   focus(i: number) {
+    this.leaveStellar();
     const t = new THREE.Vector3(this.pos[3 * i], this.pos[3 * i + 1], this.pos[3 * i + 2]);
     const d = Math.min(this.camera.position.distanceTo(this.controls.target), Math.max(25, t.length() * 0.35));
     this.startTween(t, d, this.opts.reducedMotion ? 0 : 1.4);
   }
 
-  resetView() { this.frameVisible(this.opts.reducedMotion ? 0 : 1.4, true); }
+  resetView() {
+    if (this.stellar) { this.exitStellar(); return; }
+    this.frameVisible(this.opts.reducedMotion ? 0 : 1.4, true);
+  }
+
+  // ── stellar view ──────────────────────────────────────────────────────────
+  /** The visible star closest to the centroid of the visible stars ("a star in the middle of the sample"). */
+  centralStar(): number {
+    const c = new THREE.Vector3();
+    let m = 0;
+    for (let i = 0; i < this.cat.n; i++) {
+      if (!this.visTarget[this.group[i]]) continue;
+      c.x += this.pos[3 * i]; c.y += this.pos[3 * i + 1]; c.z += this.pos[3 * i + 2]; m++;
+    }
+    if (!m) return -1;
+    c.divideScalar(m);
+    let best = -1, bestD = Infinity;
+    for (let i = 0; i < this.cat.n; i++) {
+      if (!this.visTarget[this.group[i]]) continue;
+      const dx = this.pos[3 * i] - c.x, dy = this.pos[3 * i + 1] - c.y, dz = this.pos[3 * i + 2] - c.z;
+      const d = dx * dx + dy * dy + dz * dz;
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  /** Fly into the sample to the system's star and orbit it; from another star, fly over. */
+  enterStellar(sys: StellarSystem) {
+    if (this.stellar?.index === sys.index && !this.dive) return;
+    if (!this.stellar) this.mapView = { target: this.controls.target.clone(), pos: this.camera.position.clone() };
+    this.stellar = sys;
+    this.grid.visible = false;
+    this.select(sys.index);
+    this.opts.onStellar?.(sys);
+    const star = this.starPos(sys.index);
+    const unitPc = sys.unitAU * AU_PC;
+    const az = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target)).theta;
+    // fly in through the sample, swinging round so the neighbours stream past, and
+    // end a little above the orbital plane (the Galactic plane), looking at the star
+    this.startDive(star, STELLAR_DIST * unitPc, az + 1.1, 1.22, [0, 0.55],
+      () => this.system.setSystem(sys, star),
+      () => this.setStellarControls(sys));
+  }
+
+  /** Fly back out to the map view from before the stellar view. */
+  exitStellar() {
+    if (!this.stellar) return;
+    const mv = this.mapView ?? { target: new THREE.Vector3(), pos: new THREE.Vector3(600, 300, 600) };
+    this.opts.onStellar?.(null);
+    this.setStellarControls(null);
+    const sph = new THREE.Spherical().setFromVector3(mv.pos.clone().sub(mv.target));
+    // the system shrinks away with the star; it is removed once the camera is back
+    this.startDive(mv.target.clone(), sph.radius, sph.theta, sph.phi, [0.35, 1], undefined,
+      () => this.leaveStellar(false));
+  }
+
+  /** Leave the stellar view at once (no flight). */
+  private leaveStellar(notify = true) {
+    if (!this.stellar) return;
+    if (this.dive) { this.dive = null; this.controls.enabled = true; }
+    this.system.setSystem(null);
+    this.setStellarControls(null);
+    this.stellar = null;
+    this.mapView = null;
+    this.grid.visible = this.gridOn;
+    if (notify) this.opts.onStellar?.(null);
+  }
+
+  private setStellarControls(sys: StellarSystem | null) {
+    const c = this.controls;
+    if (sys) {
+      const u = sys.unitAU * AU_PC;
+      Object.assign(c, { minDistance: 3 * u, maxDistance: 600 * u, enablePan: false, zoomToCursor: false, autoRotate: !this.opts.reducedMotion, autoRotateSpeed: 0.3 });
+    } else {
+      Object.assign(c, { minDistance: 4, maxDistance: 60000, enablePan: true, zoomToCursor: true, autoRotate: false });
+    }
+  }
+
+  private starPos(i: number) { return new THREE.Vector3(this.pos[3 * i], this.pos[3 * i + 1], this.pos[3 * i + 2]); }
+
+  private startDive(T1: THREE.Vector3, d1: number, az1: number, pol1: number, tw: [number, number], onSwitch?: () => void, onDone?: () => void) {
+    this.intro = null;
+    this.tween = null;
+    const T0 = this.controls.target.clone();
+    const sph = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(T0));
+    const d0 = Math.max(sph.radius, 1e-9);
+    const sep = T0.distanceTo(T1);
+    // from close up (e.g. another star) first back out until the destination is in view
+    const dm = d0 < sep * 1.2 ? sep * 1.6 : d0;
+    let dAz = az1 - sph.theta;
+    dAz = Math.atan2(Math.sin(dAz), Math.cos(dAz));
+    const decades = Math.abs(Math.log10(d1 / dm));
+    const dur: [number, number] = [500 * Math.log10(dm / d0), Math.min(9000, Math.max(3500, 1800 + 700 * decades))];
+    this.dive = { t0: performance.now(), dur, T0, T1, d0, dm, d1, az: [sph.theta, sph.theta + dAz], pol: [sph.phi, pol1], tw, onSwitch, switched: false, onDone };
+    this.controls.enabled = false;
+    if (this.opts.reducedMotion) this.applyDive(Infinity);
+  }
+
+  private applyDive(now: number) {
+    const dv = this.dive!;
+    const [a, f] = dv.dur;
+    const total = a + f;
+    const el = now - dv.t0;
+    if (!dv.switched && el >= a) { dv.switched = true; dv.onSwitch?.(); }
+    const l0 = Math.log(dv.d0), lm = Math.log(dv.dm), l1 = Math.log(dv.d1);
+    let ld: number, T: THREE.Vector3, e: number;
+    if (el < a) {
+      ld = l0 + (lm - l0) * smooth01(el / a);
+      T = dv.T0.clone();
+      e = 0;
+    } else {
+      const u = Math.min(1, (el - a) / f);
+      e = easeInOut(u);
+      ld = lm + (l1 - lm) * e;
+      T = dv.T0.clone().lerp(dv.T1, smooth01((u - dv.tw[0]) / (dv.tw[1] - dv.tw[0])));
+    }
+    const sph = new THREE.Spherical(Math.exp(ld), dv.pol[0] + (dv.pol[1] - dv.pol[0]) * e, dv.az[0] + (dv.az[1] - dv.az[0]) * e);
+    this.controls.target.copy(T);
+    this.camera.position.copy(T).add(new THREE.Vector3().setFromSpherical(sph));
+    this.camera.lookAt(T);
+    if (el >= total) {
+      this.dive = null;
+      this.controls.enabled = true;
+      dv.onDone?.();
+    }
+  }
 
   /** Fly out to a view from above the Galactic plane that shows the schematic disk, Sun and samples. */
   galaxyView() {
+    this.leaveStellar();
     this.galaxyOn = true;
     const target = new THREE.Vector3(R_SUN * 0.45, 0, 0);
     const sph0 = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
@@ -599,6 +763,7 @@ export class StarMapView {
       m.geometry?.dispose();
       (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x?.dispose());
     });
+    this.system.dispose();
     free(this.scene); free(this.sky);
     this.renderer.dispose();
   }
@@ -684,7 +849,7 @@ export class StarMapView {
     const { c, r } = this.visibleBounds();
     const dist = this.fitDistance(r);
     const end = new THREE.Spherical().setFromVector3(this.preferredDirection());
-    if (this.opts.reducedMotion) {
+    if (this.opts.reducedMotion || this.opts.skipIntro) {
       this.controls.target.copy(c);
       this.camera.position.copy(c).add(new THREE.Vector3().setFromSpherical(end).multiplyScalar(dist));
       this.vis.set(this.visTarget);
@@ -713,9 +878,10 @@ export class StarMapView {
     this.camera.updateMatrixWorld();
     const m = new THREE.Matrix4().multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse).elements;
     const W = this.width, H = this.height, P = this.pos, G = this.group, V = this.visTarget;
+    const host = this.stellar ? this.stellar.index : -1;
     let best = -1, bestD = radius * radius, bestW = Infinity;
     for (let i = 0, n = this.cat.n; i < n; i++) {
-      if (!V[G[i]]) continue;
+      if (!V[G[i]] || i === host) continue;
       const x = P[3 * i], y = P[3 * i + 1], z = P[3 * i + 2];
       const w = m[3] * x + m[7] * y + m[11] * z + m[15];
       if (w <= 0.01) continue;
@@ -752,6 +918,7 @@ export class StarMapView {
     this.sideInset = this.width > 860 ? Math.min(360, this.width * 0.24) : 0;
     this.height = Math.max(1, el.clientHeight);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = dpr;
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(this.width, this.height, false);
     this.camera.aspect = this.skyCamera.aspect = this.width / this.height;
@@ -773,7 +940,10 @@ export class StarMapView {
     const dt = this.last ? Math.min(0.1, (now - this.last) / 1000) : 0;
     this.last = now;
 
-    if (this.intro) {
+    this.clock += this.opts.reducedMotion ? 0 : dt;
+    if (this.dive) {
+      this.applyDive(now);
+    } else if (this.intro) {
       const u = Math.min(1, (now - this.intro.t0) / this.intro.dur);
       this.applyIntro(u);
       if (u >= 1) this.intro = null;
@@ -787,7 +957,7 @@ export class StarMapView {
       this.camera.position.copy(this.controls.target).addScaledVector(dir, d);
       if (u >= 1) this.tween = null;
     }
-    if (!this.intro) this.controls.update();
+    if (!this.intro && !this.dive) this.controls.update();
 
     // group fades
     const k = this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * (this.intro ? 1.6 : 7));
@@ -804,7 +974,8 @@ export class StarMapView {
     // the schematic disk stays a faint hint at sample scale and fills in when zoomed out
     const camR = this.camera.position.length();
     this.galU.uOpacity.value = 0.45 + 0.55 * THREE.MathUtils.smoothstep(camR, 2500, 20000);
-    this.galFade += ((this.galaxyOn ? 1 : 0) - this.galFade) * (this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * 4));
+    // seen from inside the sample the haze layers would be flat sheets: the sky band takes over
+    this.galFade += ((this.galaxyOn && !this.stellar ? 1 : 0) - this.galFade) * (this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * 4));
     this.galU.uFade.value = this.galFade;
     this.galaxy.visible = this.galFade > 0.003;
     // cluster markers are local annotations; at Galactic scale they would only clutter the Sun
@@ -813,7 +984,16 @@ export class StarMapView {
     this.renderer.clear();
     this.skyCamera.quaternion.copy(this.camera.quaternion);
     this.renderer.render(this.sky, this.skyCamera);
+    const nearStar = !!this.stellar && this.camera.position.distanceTo(this.controls.target) < 1;
+    this.sizeK += ((nearStar ? 0.5 : 1) - this.sizeK) * (this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * 3));
+    this.mat.uniforms.uMaxPx.value = 9 * this.dpr * this.sizeK;
+
+    // the selection ring marks the star on the way in, until its system takes over
+    if (this.stellar && this.selected === this.stellar.index) {
+      this.selMark.visible = this.camera.position.distanceTo(this.starPos(this.selected)) > 0.3;
+    }
     this.renderer.render(this.scene, this.camera);
+    if (this.system.system) this.system.render(this.renderer, this.camera, this.clock, this.width, this.height, this.dpr);
     this.placeLabels();
   }
 

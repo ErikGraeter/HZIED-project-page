@@ -549,3 +549,22 @@ table.prov td { color: var(--ink-2); }
   .paper { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .paper-meta { text-align: left; }
 }
+
+/* stellar view */
+.map-label.sys { display: flex; flex-direction: column; gap: 1px; margin: -34px 0 0 8px; font-family: var(--sans); font-size: 11.5px; color: var(--ink); text-shadow: 0 0 6px rgba(0, 0, 0, 0.9); }
+.map-label.sys b { font-weight: 600; }
+.map-label.sys small { font-family: var(--mono); font-size: 10px; color: var(--ink-2); }
+.map-label.sys-steam b { color: var(--hot-soft); }
+.map-label.sys-hot b { color: var(--hot); }
+.map-label.sys-cold b { color: var(--cold-soft); }
+.map-label.sys-star { margin: -38px 0 0 12px; }
+.map-label.sys-thresh b { font-weight: 400; font-style: italic; font-family: var(--serif); font-size: 13px; color: rgba(246, 236, 222, 0.8); }
+.sys-panel h2 { font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.05; margin: 0 0 4px; }
+.sys-star { font-family: var(--mono); font-size: 11px; color: var(--ink-2); margin: 0 0 10px; }
+.sys-intro { color: var(--ink-2); font-size: 12.5px; line-height: 1.5; margin: 0 0 12px; }
+.sys-planets { list-style: none; margin: 0; padding: 10px 0 0; border-top: 1px solid var(--line); display: grid; gap: 9px; }
+.sys-planets li { display: grid; grid-template-columns: 14px 1fr; gap: 1px 6px; align-items: center; }
+.sys-planets li span { grid-column: 2; font-family: var(--mono); font-size: 10.5px; color: var(--ink-2); }
+.sys-planets .sw.ring { background: none; border: 1px dashed var(--warm-white); width: 9px; height: 9px; }
+.sys-panel .st-foot { margin: 12px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.sc-btns { display: flex; gap: 6px; }

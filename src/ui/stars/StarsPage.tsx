@@ -2,6 +2,8 @@
 // target stars around the Sun, with sample / class selection, live summary
 // statistics and a per-star card.  Data: src/data/plato_stars.* (exported by
 // scripts/export_plato_stars.py); scene: src/stars/StarMapView.ts.
+// The stellar view flies to one star and shows an illustrative planetary system
+// around it (src/stars/system.ts, src/stars/SystemView.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CLASSES, fetchCatalog, starRecord, type SpClass, type StarCatalog, type StarMeta } from '../../stars/catalog';
@@ -9,6 +11,10 @@ import { computeStats, type SampleSel, type Selection } from '../../stars/stats'
 import { CLASS_COLORS, SAMPLE_COLORS, StarMapView, type ColorMode } from '../../stars/StarMapView';
 import { StatsPanel } from './StatsPanel';
 import { StarCard } from './StarCard';
+import { SystemPanel } from './SystemPanel';
+import { buildSystem, type StellarSystem } from '../../stars/system';
+import { KIND_COLORS } from '../../stars/SystemView';
+import { loadData } from '../../data';
 import { int } from './fmt';
 
 const metaFile = import.meta.glob<StarMeta>('../../data/plato_stars_meta.json', { eager: true, import: 'default' });
@@ -18,6 +24,7 @@ const BIN_URL = Object.values(binFile)[0];
 
 const CLASS_NAME: Record<SpClass, string> = { M: 'M dwarfs', K: 'K', G: 'G', F: 'F' };
 const ALL: Record<SpClass, boolean> = { M: true, K: true, G: true, F: true };
+const DATA = loadData();
 
 export default function StarsPage({ reducedMotion }: { reducedMotion: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -33,6 +40,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null);
   const [picked, setPicked] = useState(-1);
   const [intro, setIntro] = useState(true);
+  const [system, setSystem] = useState<StellarSystem | null>(null);
   const still = useMemo(() => new URLSearchParams(window.location.search).get('still') === '1', []);
   const calm = reducedMotion || still;
 
@@ -54,9 +62,11 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
     let v: StarMapView;
     try {
       v = new StarMapView(canvasRef.current, labelRef.current, cat, {
-        reducedMotion: calm,
+        reducedMotion,
+        skipIntro: still,
         onHover: (i, x, y) => setHover(i >= 0 ? { i, x, y } : null),
         onSelect: (i) => setPicked(i),
+        onStellar: (s) => setSystem(s),
       });
     } catch (e) {
       setError(`WebGL is not available in this browser (${(e as Error).message}).`);
@@ -70,7 +80,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
     canvasRef.current.addEventListener('pointerdown', stopIntro, { once: true });
     canvasRef.current.addEventListener('wheel', stopIntro, { once: true, passive: true });
     return () => { window.clearTimeout(t); v.dispose(); viewRef.current = null; };
-  }, [cat, calm]);
+  }, [cat, calm, reducedMotion, still]);
 
   const prevSample = useRef<SampleSel>(sel.sample);
   useEffect(() => {
@@ -86,11 +96,27 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { viewRef.current?.select(-1); setPicked(-1); }
+      if (e.key !== 'Escape') return;
+      if (systemRef.current) viewRef.current?.exitStellar();
+      else { viewRef.current?.select(-1); setPicked(-1); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  const systemRef = useRef(system);
+  systemRef.current = system;
+  /** Fly to star i (or, with none picked, to a star in the middle of the selection). */
+  const visit = (i: number) => {
+    const v = viewRef.current;
+    if (!cat || !v) return;
+    const k = i >= 0 ? i : v.centralStar();
+    if (k < 0) return;
+    const d = DATA.provenance.defaults;
+    v.enterStellar(buildSystem(starRecord(cat, k), DATA.tables, d.S_thresh, d.wrr));
+    setPicked(-1);
+    setIntro(false);
+  };
 
   const stats = useMemo(() => (cat ? computeStats(cat, sel) : null), [cat, sel]);
   const record = useMemo(() => (cat && picked >= 0 ? starRecord(cat, picked) : null), [cat, picked]);
@@ -180,6 +206,10 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
           </div>
 
           <div className="ctl-row">
+            {system
+              ? <button className="btn primary" onClick={() => viewRef.current?.exitStellar()}>Back to the map</button>
+              : <button className="btn primary" disabled={!cat} onClick={() => visit(picked)}
+                  title="Fly into the sample to a star (the selected one, or one in the middle of the sample) and look around from there">Stellar view</button>}
             <button className="btn" onClick={() => viewRef.current?.resetView()}>Reset view</button>
             <button className="btn" onClick={() => { setGalaxy(true); viewRef.current?.galaxyView(); }} title="Zoom out to the Milky Way context, seen from above">Milky Way view</button>
             <button className="btn" aria-pressed={galaxy} onClick={() => setGalaxy((g) => !g)}>{galaxy ? 'Hide Galactic disk' : 'Show Galactic disk'}</button>
@@ -187,18 +217,27 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
           </div>
         </aside>
 
-        {stats && <StatsPanel stats={stats} sel={sel} />}
+        {system ? <SystemPanel sys={system} onBack={() => viewRef.current?.exitStellar()} />
+          : stats && <StatsPanel stats={stats} sel={sel} />}
 
         {record && <StarCard s={record} onClose={() => { viewRef.current?.select(-1); setPicked(-1); }}
-          onFocus={() => viewRef.current?.focus(record.index)} />}
+          onFocus={() => viewRef.current?.focus(record.index)} onStellar={() => visit(record.index)} />}
 
         <div className="map-legend">
+          {system ? (
+            <>
+              {system.planets.map((p) => <span key={p.kind}><i className="dot" style={{ background: KIND_COLORS[p.kind] }} />{p.label}</span>)}
+              <span className="note">Other stars at their real positions · planets illustrative, enlarged</span>
+              <span className="hint on">Drag to look around · scroll to zoom · Esc returns to the map</span>
+            </>
+          ) : <>
           {mode === 'sample'
             ? (['P4', 'P5'] as const).map((k) => <span key={k}><i className="dot" style={{ background: SAMPLE_COLORS[k] }} />{k === 'P4' ? 'P4 · M dwarfs' : 'P5 · FGK dwarfs and subgiants'}</span>)
             : [...CLASSES].reverse().map((k) => <span key={k}><i className="dot" style={{ background: CLASS_COLORS[k] }} />{k}</span>)}
           <span><i className="dot sun" />Sun</span>
           <span className="note">Positions to scale · point size grows weakly with luminosity</span>
           <span className={`hint${intro && cat ? ' on' : ''}`}>Drag to rotate · scroll to zoom · right-drag to pan · click a star</span>
+          </>}
         </div>
       </section>
 

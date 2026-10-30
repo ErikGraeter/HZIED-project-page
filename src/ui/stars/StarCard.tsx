@@ -7,7 +7,7 @@ import { pc, pmSig } from './fmt';
 
 const SAMPLE_LABEL = { P4: 'P4 · M dwarfs', P5: 'P5 · FGK dwarfs and subgiants' } as const;
 
-export function StarCard({ s, onClose, onFocus }: { s: StarRecord; onClose: () => void; onFocus: () => void }) {
+export function StarCard({ s, onClose, onFocus, onStellar }: { s: StarRecord; onClose: () => void; onFocus: () => void; onStellar: () => void }) {
   const rows: [string, string][] = [
     ['Distance', `${s.e_d !== null ? pmSig(s.d, s.e_d, 0, 2) : pc(s.d)} pc`],
   ];
@@ -41,7 +41,10 @@ export function StarCard({ s, onClose, onFocus }: { s: StarRecord; onClose: () =
         {rows.map(([k, v]) => <div key={k}><dt>{k === 'T_eff' ? <>T<sub>eff</sub></> : k}</dt><dd>{v}</dd></div>)}
       </dl>
       <div className="sc-foot">
-        <button className="btn" onClick={onFocus}>Centre view on star</button>
+        <div className="sc-btns">
+          <button className="btn" onClick={onFocus}>Centre view</button>
+          <button className="btn" onClick={onStellar} title="Fly to this star and look around from there">Stellar view</button>
+        </div>
         <span>L from R and T<sub>eff</sub></span>
       </div>
     </div>
