@@ -214,7 +214,7 @@ A second tab shows the real P4 and P5 target stars in 3D around the Sun.
   planet's transit radius from the AGNI steam table at the default wrr; the runaway threshold
   (S_abs = 280 W m⁻²) is drawn as a dashed ring with the hot zone shaded. Orbits to scale; star (×8),
   planets and envelope (×7) enlarged. Every click flies in through the sample (≈ 7 s, the view swinging round so
-  the neighbours stream past); the planets orbit and rotate slowly. From inside, clicking another star and “Stellar view” flies over to it;
+  the neighbours stream past); the planets orbit and spin (≈ one turn per 10–15 s); the background stars dim. From inside, clicking another star and “Stellar view” flies over to it;
   “Back to the map” (or Esc) returns. Code: `src/stars/system.ts`, `src/stars/SystemView.ts`.
 
 Interaction: P4 / P5 / Both (the camera reframes), colour by sample or spectral class,

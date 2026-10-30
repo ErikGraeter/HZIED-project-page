@@ -171,6 +171,7 @@ export class StarMapView {
   private dpr = 1;
   /** Marker size factor: smaller in the stellar view, where the neighbours fill the sky. */
   private sizeK = 1;
+  private skyMat!: THREE.ShaderMaterial;
   private width = 1;
   private height = 1;
   private pointer: { x: number; y: number; dirty: boolean; inside: boolean } = { x: 0, y: 0, dirty: false, inside: false };
@@ -393,13 +394,14 @@ export class StarMapView {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(p, 3));
     g.setAttribute('aB', new THREE.BufferAttribute(s, 1));
-    this.sky.add(new THREE.Points(g, new THREE.ShaderMaterial({
+    this.skyMat = new THREE.ShaderMaterial({
       vertexShader: `attribute float aB; varying float vB; uniform float uDpr;
         void main() { vB = aB; gl_Position = projectionMatrix * modelViewMatrix * vec4(position * 5.0, 1.0); gl_PointSize = (1.0 + 1.6 * aB) * uDpr; }`,
-      fragmentShader: `varying float vB; void main() { float r2 = dot(gl_PointCoord * 2.0 - 1.0, gl_PointCoord * 2.0 - 1.0); if (r2 > 1.0) discard;
-        gl_FragColor = vec4(vec3(0.86, 0.9, 1.0), vB * 0.55 * exp(-r2 * 3.0)); }`,
-      uniforms: { uDpr: { value: 1 } }, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
-    })));
+      fragmentShader: `varying float vB; uniform float uDim; void main() { float r2 = dot(gl_PointCoord * 2.0 - 1.0, gl_PointCoord * 2.0 - 1.0); if (r2 > 1.0) discard;
+        gl_FragColor = vec4(vec3(0.86, 0.9, 1.0), vB * 0.55 * uDim * exp(-r2 * 3.0)); }`,
+      uniforms: { uDpr: { value: 1 }, uDim: { value: 1 } }, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
+    });
+    this.sky.add(new THREE.Points(g, this.skyMat));
     // diffuse band with a dark dust lane along the plane in the inner Galaxy
     this.sky.add(new THREE.Mesh(new THREE.SphereGeometry(6, 96, 48), new THREE.ShaderMaterial({
       side: THREE.BackSide, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
@@ -987,6 +989,10 @@ export class StarMapView {
     const nearStar = !!this.stellar && this.camera.position.distanceTo(this.controls.target) < 1;
     this.sizeK += ((nearStar ? 0.5 : 1) - this.sizeK) * (this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * 3));
     this.mat.uniforms.uMaxPx.value = 9 * this.dpr * this.sizeK;
+    // and dimmer, so the system in front stands out
+    const dim = (1 - this.sizeK) / 0.5;
+    this.mat.uniforms.uAlpha.value = 0.9 * (1 - 0.5 * dim);
+    this.skyMat.uniforms.uDim.value = 1 - 0.5 * dim;
 
     // the selection ring marks the star on the way in, until its system takes over
     if (this.stellar && this.selected === this.stellar.index) {

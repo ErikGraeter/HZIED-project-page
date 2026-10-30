@@ -313,8 +313,8 @@ export class SystemView {
 
       rig.spin.scale.setScalar(rc);
       rig.spin.rotation.set(0, 0, look.tilt, 'ZXY');
-      // slow axial rotation (≈ one turn per 40–60 s)
-      const spinAngle = look.phase + time * look.spin * 1.6;
+      // axial rotation, ≈ one turn per 10–15 s
+      const spinAngle = look.phase + time * look.spin * 5;
       rig.surface.rotation.set(0, spinAngle, 0);
       rig.clouds.rotation.set(0, spinAngle, 0);
       rig.clouds.scale.setScalar(1.012);
