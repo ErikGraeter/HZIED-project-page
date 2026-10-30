@@ -208,8 +208,8 @@ A second tab shows the real P4 and P5 target stars in 3D around the Sun.
 * **Stellar view** (button, or “Stellar view” on a star card): the camera flies into the sample to the
   selected star (without a selection, the visible star closest to the centroid of the selection) and orbits
   it at AU scale; every other star stays at its catalogue position, so the sky around is the real sample
-  seen from there (the Sun is labelled). Around the star: three illustrative planets — hot with a steam
-  envelope (S_abs = 900 W m⁻², 0.6 M⊕), hot bare rock (480 W m⁻², 1.4 M⊕), temperate (170 W m⁻², 1 M⊕) —
+  seen from there (the Sun is labelled). Around the star: three illustrative planets — hot bare rock
+  (S_abs = 900 W m⁻², 1.4 M⊕), hot with a steam envelope (300 W m⁻², 0.6 M⊕), temperate (170 W m⁻², 1 M⊕) —
   at a = √(238 W m⁻² · L / S_abs) AU, Kepler periods (sped up), rocky radii from the dry branch and the steam
   planet's transit radius from the AGNI steam table at the default wrr; the runaway threshold
   (S_abs = 280 W m⁻²) is drawn as a dashed ring with the hot zone shaded. Orbits to scale; star (×8),

@@ -55,9 +55,10 @@ export interface StellarSystem {
   planets: SysPlanet[];
 }
 
+// innermost first, cold planet last (it sets the scale)
 const SPEC: { kind: SysKind; label: string; S_abs: number; M: number }[] = [
-  { kind: 'steam', label: 'Hot · steam envelope', S_abs: 900, M: 0.6 },
-  { kind: 'hot', label: 'Hot · bare rock', S_abs: 480, M: 1.4 },
+  { kind: 'hot', label: 'Hot · bare rock', S_abs: 900, M: 1.4 },
+  { kind: 'steam', label: 'Hot · steam envelope', S_abs: 300, M: 0.6 },
   { kind: 'cold', label: 'Temperate · oceans', S_abs: 170, M: 1.0 },
 ];
 
