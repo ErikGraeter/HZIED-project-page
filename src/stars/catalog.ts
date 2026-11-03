@@ -1,4 +1,4 @@
-// PLATO P4/P5 stellar catalogue: decoding of the exported binary columns
+// PLATO P1/P2/P4/P5 stellar catalogue: decoding of the exported binary columns
 // (scripts/export_plato_stars.py), coordinate helpers and per-star records.
 // Pure functions — no DOM, so the unit tests can run them in Node.
 
@@ -15,8 +15,11 @@ export interface StarMeta {
   n: number;
   raw_bytes: number;
   layout: Record<string, Column>;
-  samples: Record<'P4' | 'P5', SampleSummary>;
+  samples: Record<SampleKey, SampleSummary>;
+  /** Stars in both P4 and P5. */
   n_in_both: number;
+  /** Pairwise sample overlaps, e.g. 'P1&P2'. */
+  overlaps?: Record<string, number>;
   /** Open clusters marked on the map; centre = median position of the selected sample stars. */
   clusters?: { name: string; x: number; y: number; z: number; d: number; n_selected: number; n_expected_field: number; radius_pc: number }[];
   spt_labels: string[];
@@ -29,9 +32,11 @@ export interface StarMeta {
   provenance: { catalogue: string; files: string[]; export_date: string; repo_commit: string | null; repo_data_uncommitted?: boolean };
 }
 
-/** Sample bits of tPICsourceFlagNCAM_BOL (Montalto et al. 2026). */
-export const BIT = { P5: 4, P4: 8 } as const;
+/** Sample bits of tPICsourceFlagNCAM_BOL (Montalto et al. 2026).  P2 ⊂ P1. */
+export const BIT = { P1: 1, P2: 2, P5: 4, P4: 8 } as const;
 export type SampleKey = keyof typeof BIT;
+/** Display order: the pipeline samples first, then the bright samples. */
+export const SAMPLES: readonly SampleKey[] = ['P4', 'P5', 'P1', 'P2'];
 
 /** Main spectral classes present in the samples, cool → hot. */
 export const CLASSES = ['M', 'K', 'G', 'F'] as const;
@@ -46,7 +51,7 @@ export interface StarCatalog {
   teff: Float32Array;
   mass: Float32Array;
   radius: Float32Array;
-  /** Sample bits (4 = P5, 8 = P4). */
+  /** Sample bits (1 = P1, 2 = P2, 4 = P5, 8 = P4). */
   sample: Uint8Array;
   /** Index into meta.spt_labels. */
   spt: Uint8Array;
@@ -163,7 +168,7 @@ export function starRecord(c: StarCatalog, i: number): StarRecord {
   const nCam = c.raw('n_cam', i);
   return {
     index: i, pic: c.picId(i), gaia: c.gaiaId(i),
-    sample: (['P4', 'P5'] as SampleKey[]).filter((k) => s & BIT[k]),
+    sample: SAMPLES.filter((k) => s & BIT[k]),
     spt: c.meta.spt_labels[c.spt[i]],
     d: c.d[i], e_d: c.raw('e_d', i), plx: c.raw('plx', i),
     teff: c.teff[i], e_teff: c.raw('e_teff', i),

@@ -1,14 +1,14 @@
-// "PLATO stellar samples" page: an interactive 3D map of the real P4 and P5
-// target stars around the Sun, with sample / class selection, live summary
+// "PLATO stellar samples" page: an interactive 3D map of the real P1, P2, P4
+// and P5 target stars around the Sun, with sample / class selection, live summary
 // statistics and a per-star card.  Data: src/data/plato_stars.* (exported by
 // scripts/export_plato_stars.py); scene: src/stars/StarMapView.ts.
 // The stellar view flies to one star and shows an illustrative planetary system
 // around it (src/stars/system.ts, src/stars/SystemView.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CLASSES, fetchCatalog, starRecord, type SpClass, type StarCatalog, type StarMeta } from '../../stars/catalog';
-import { computeStats, type SampleSel, type Selection } from '../../stars/stats';
-import { CLASS_COLORS, SAMPLE_COLORS, StarMapView, type ColorMode } from '../../stars/StarMapView';
+import { CLASSES, SAMPLES, fetchCatalog, starRecord, type SampleKey, type SpClass, type StarCatalog, type StarMeta } from '../../stars/catalog';
+import { computeStats, sampleBits, type Selection } from '../../stars/stats';
+import { CLASS_COLORS, SAMPLE_COLORS, SAMPLE_LABEL, StarMapView, type ColorMode } from '../../stars/StarMapView';
 import { StatsPanel } from './StatsPanel';
 import { StarCard } from './StarCard';
 import { SystemPanel } from './SystemPanel';
@@ -24,6 +24,14 @@ const BIN_URL = Object.values(binFile)[0];
 
 const CLASS_NAME: Record<SpClass, string> = { M: 'M dwarfs', K: 'K', G: 'G', F: 'F' };
 const ALL: Record<SpClass, boolean> = { M: true, K: true, G: true, F: true };
+/** The HZIED pipeline's samples; P1 and P2 are added on request. */
+const PIPELINE: Record<SampleKey, boolean> = { P4: true, P5: true, P1: false, P2: false };
+const SAMPLE_TIP: Record<SampleKey, string> = {
+  P4: 'M dwarfs, V ≤ 16 — stellar input of the HZIED pipeline',
+  P5: 'FGK dwarfs and subgiants, V ≤ 13 — stellar input of the HZIED pipeline',
+  P1: 'Bright FGK stars, V ≤ 11 (includes P2)',
+  P2: 'Brightest FGK stars, V ≤ 8.5 (a subset of P1)',
+};
 const DATA = loadData();
 
 export default function StarsPage({ reducedMotion }: { reducedMotion: boolean }) {
@@ -33,7 +41,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
   const [cat, setCat] = useState<StarCatalog | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [sel, setSel] = useState<Selection>({ sample: 'both', classes: ALL });
+  const [sel, setSel] = useState<Selection>({ samples: PIPELINE, classes: ALL });
   const [mode, setMode] = useState<ColorMode>('sample');
   const [grid, setGrid] = useState(true);
   const [galaxy, setGalaxy] = useState(true);
@@ -82,12 +90,13 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
     return () => { window.clearTimeout(t); v.dispose(); viewRef.current = null; };
   }, [cat, calm, reducedMotion, still]);
 
-  const prevSample = useRef<SampleSel>(sel.sample);
+  const prevSample = useRef(sampleBits(sel.samples));
   useEffect(() => {
     const v = viewRef.current;
     if (!v) return;
-    const changed = prevSample.current !== sel.sample;
-    prevSample.current = sel.sample;
+    const bits = sampleBits(sel.samples);
+    const changed = prevSample.current !== bits;
+    prevSample.current = bits;
     v.setSelection(sel, { frame: changed });
   }, [sel]);
   useEffect(() => { viewRef.current?.setColorMode(mode); }, [mode, cat]);
@@ -122,7 +131,11 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
   const record = useMemo(() => (cat && picked >= 0 ? starRecord(cat, picked) : null), [cat, picked]);
   const hoverRec = useMemo(() => (cat && hover && hover.i !== picked ? starRecord(cat, hover.i) : null), [cat, hover, picked]);
 
-  const setSample = (s: SampleSel) => setSel((p) => ({ ...p, sample: s }));
+  const toggleSample = (k: SampleKey) => setSel((p) => {
+    const next = { ...p.samples, [k]: !p.samples[k] };
+    return { ...p, samples: SAMPLES.some((s) => next[s]) ? next : p.samples };
+  });
+  const onlySample = (k: SampleKey) => setSel((p) => ({ ...p, samples: { P1: false, P2: false, P4: false, P5: false, [k]: true } }));
   const toggleClass = (k: SpClass) => setSel((p) => {
     const next = { ...p.classes, [k]: !p.classes[k] };
     return { ...p, classes: CLASSES.some((c) => next[c]) ? next : p.classes };
@@ -132,7 +145,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
   const m = META;
   return (
     <div className="samples-page">
-      <section className="map-stage" aria-label="3D map of the PLATO P4 and P5 stellar samples">
+      <section className="map-stage" aria-label="3D map of the PLATO P1, P2, P4 and P5 stellar samples">
         <div className="map-view">
           <canvas ref={canvasRef} className="map-canvas" />
           <div ref={labelRef} className="map-labels" aria-hidden="true" />
@@ -159,20 +172,24 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
 
         <aside className="map-panel map-left">
           <p className="map-kicker">PLATO Input Catalogue · LOPS2 field</p>
-          <h1>The P4 and P5 stellar samples</h1>
+          <h1>The PLATO stellar samples</h1>
           <p className="map-intro">
             Each point is a catalogued target star, placed at its distance in Galactic coordinates
             with the Sun at the origin. P5 contains FGK dwarfs and subgiants down to V&nbsp;=&nbsp;13; P4 contains
             M&nbsp;dwarfs down to V&nbsp;=&nbsp;16. These stars host the simulated planets used in the thesis.
+            The bright samples P1 (V&nbsp;≤&nbsp;11) and P2 (V&nbsp;≤&nbsp;8.5, a subset of P1) can be added for comparison.
           </p>
 
           <div className="ctl">
             <span className="ctl-k">Sample</span>
-            <div className="seg" role="group" aria-label="Sample">
-              {(['P4', 'P5', 'both'] as SampleSel[]).map((s) => (
-                <button key={s} aria-pressed={sel.sample === s} onClick={() => setSample(s)}>
-                  {s !== 'both' && <i className="sw" style={{ background: SAMPLE_COLORS[s] }} />}
-                  {s === 'both' ? 'Both' : s}
+            <div className="cls-filter" role="group" aria-label="Sample">
+              {SAMPLES.map((k) => (
+                <button key={k} className="cls" aria-pressed={sel.samples[k]}
+                  onClick={() => toggleSample(k)} onDoubleClick={() => onlySample(k)}
+                  title={`${SAMPLE_TIP[k]} — click to toggle, double-click to show only this sample`}>
+                  <i className="sw" style={{ background: SAMPLE_COLORS[k] }} />
+                  <b>{k}</b>
+                  <span>{m ? int(m.samples[k]?.n ?? 0) : ''}</span>
                 </button>
               ))}
             </div>
@@ -190,8 +207,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
             <span className="ctl-k">Spectral class <small>from T<sub>eff</sub></small></span>
             <div className="cls-filter" role="group" aria-label="Spectral class filter">
               {[...CLASSES].reverse().map((k) => {
-                const c = stats?.classCounts[k];
-                const nk = c ? (sel.sample === 'P4' ? c.P4 : sel.sample === 'P5' ? c.P5 : c.P4 + c.P5) : 0;
+                const nk = stats?.classCounts[k] ?? 0;
                 return (
                   <button key={k} className="cls" aria-pressed={sel.classes[k]} disabled={!nk && !sel.classes[k]}
                     onClick={() => toggleClass(k)} onDoubleClick={() => onlyClass(k)}
@@ -232,7 +248,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
             </>
           ) : <>
           {mode === 'sample'
-            ? (['P4', 'P5'] as const).map((k) => <span key={k}><i className="dot" style={{ background: SAMPLE_COLORS[k] }} />{k === 'P4' ? 'P4 · M dwarfs' : 'P5 · FGK dwarfs and subgiants'}</span>)
+            ? SAMPLES.filter((k) => sel.samples[k]).map((k) => <span key={k}><i className="dot" style={{ background: SAMPLE_COLORS[k] }} />{SAMPLE_LABEL[k]}</span>)
             : [...CLASSES].reverse().map((k) => <span key={k}><i className="dot" style={{ background: CLASS_COLORS[k] }} />{k}</span>)}
           <span><i className="dot sun" />Sun</span>
           <span className="note">Positions to scale · point size grows weakly with luminosity</span>
@@ -258,7 +274,7 @@ export default function StarsPage({ reducedMotion }: { reducedMotion: boolean })
 }
 
 function Notes({ m }: { m: StarMeta }) {
-  const P4 = m.samples.P4, P5 = m.samples.P5;
+  const P4 = m.samples.P4, P5 = m.samples.P5, P1 = m.samples.P1, P2 = m.samples.P2;
   const pct = (x?: number, d = 1) => (x === undefined ? '—' : `${(100 * x).toFixed(d)} %`);
   return (
     <div className="cols-3 notes">
@@ -267,7 +283,8 @@ function Notes({ m }: { m: StarMeta }) {
         <p>The samples are taken from the PLATO Input Catalogue of targets (tPIC, version 2.2.0.1) for the first long-pointing field, LOPS2 (Montalto et al. 2026). Sample membership is the catalogue's own flag. On top of it, the stars pass the quality cuts that the HZIED pipeline applies before it draws planets:</p>
         <p><strong>P5</strong>: 3850–6550 K, M ≤ 1.5 M☉, R ≤ 2.5 R☉ — {int(P5.n)} of {int(P5.n_flagged)} flagged stars.<br />
           <strong>P4</strong>: 2300–4200 K, M ≤ 0.65 M☉, R ≤ 0.85 R☉ — {int(P4.n)} of {int(P4.n_flagged)} flagged stars.</p>
-        <p>No star is flagged as both P4 and P5{m.n_in_both ? ` (except ${m.n_in_both}, drawn once)` : ''}. Masses, radii and temperatures are the catalogue values; luminosities are derived from them as in the pipeline, L = R²(T<sub>eff</sub>/5778 K)⁴.</p>
+        {P1 && P2 && <p>The bright samples are not used by the pipeline and are shown for context, with the same cuts as P5: <strong>P1</strong> (V ≤ 11) — {int(P1.n)} of {int(P1.n_flagged)} flagged stars; <strong>P2</strong> (V ≤ 8.5) — {int(P2.n)} of {int(P2.n_flagged)}, all of them also in P1.{m.overlaps?.['P1&P5'] === 0 && ' In the catalogue flags P1 and P5 share no star, so P5 here is the FGK sample beside P1, not a superset of it.'} With P1 and P2 both shown, P2 stars are drawn in the P2 colour.</p>}
+        <p>No star is flagged as both P4 and P5{m.n_in_both ? ` (except ${m.n_in_both}, drawn once)` : ''}{m.overlaps?.['P1&P4'] === 0 ? ', and none as both P4 and P1' : ''}. Masses, radii and temperatures are the catalogue values; luminosities are derived from them as in the pipeline, L = R²(T<sub>eff</sub>/5778 K)⁴.</p>
       </div>
       <div className="prose">
         <h3>How the positions are computed</h3>

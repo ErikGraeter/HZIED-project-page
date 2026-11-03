@@ -14,7 +14,7 @@ export function SystemPanel({ sys, onBack }: { sys: StellarSystem; onBack: () =>
         {sys.spt} · {Math.round(sys.teff)} K · {sys.mass.toFixed(2)} M☉ · {sys.lum < 0.1 ? sys.lum.toFixed(3) : sys.lum.toFixed(2)} L☉ · {pc(sys.d)} pc
       </p>
       <p className="sys-intro">
-        The camera sits inside the sample at this star's catalogue position. Every other point is a P4 or P5 star where
+        The camera sits inside the sample at this star's catalogue position. Every other point is a star of the chosen samples where
         it appears from here; the Sun is labelled. Drag to look around.
       </p>
 

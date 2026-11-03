@@ -449,7 +449,7 @@ table.prov td { color: var(--ink-2); }
 .st-count { display: flex; align-items: baseline; gap: 8px; }
 .st-count .v { font-family: var(--serif); font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }
 .st-count .k { color: var(--muted); font-size: 12px; }
-.st-split { display: flex; gap: 16px; margin: 6px 0 0; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+.st-split { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 6px 0 0; font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
 .st-split span, .sc-tags span, .st-foot i { display: inline-flex; align-items: center; gap: 6px; }
 .st-dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
 .st-dl dt { color: var(--muted); }

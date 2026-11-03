@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """
-export_plato_stars.py — Export the PLATO P4 and P5 stellar samples for the
-"PLATO stellar samples" page of the website.
+export_plato_stars.py — Export the PLATO P1, P2, P4 and P5 stellar samples
+for the "PLATO stellar samples" page of the website.
 
-Stars are read from the processed tPIC sample files that the HZIED pipeline
-uses as its stellar input (``data/processed/plato_P4_stars.parquet`` and
-``plato_P5_stars.parquet``, written by ``setup_PLATO_data/setup_plato_data.py``):
-the tPIC LOPS2 stars flagged as P4 / P5 (bits 3 / 2 of tPICsourceFlagNCAM_BOL,
-Montalto et al. 2026) after the pipeline's stellar quality cuts.  Nothing is
-simulated here and nothing in the HZIED repository is written.
+Stars are read from the processed tPIC sample files written by
+``setup_PLATO_data/setup_plato_data.py`` (``data/processed/plato_<key>_stars.parquet``):
+the tPIC LOPS2 stars flagged as P1 / P2 / P5 / P4 (bits 0 / 1 / 2 / 3 of
+tPICsourceFlagNCAM_BOL, Montalto et al. 2026) after the pipeline's stellar
+quality cuts.  P4 and P5 are the HZIED pipeline's stellar input; P1 (bright FGK
+stars, V ≤ 11) and its subset P2 (V ≤ 8.5) are shown for context.  A star's
+sample bits are the samples whose parquet contains it.  Nothing is simulated
+here and nothing in the HZIED repository is written.
 
 Positions
 ---------
@@ -59,7 +61,8 @@ import numpy as np
 import pandas as pd
 
 WEBSITE_DIR = Path(__file__).resolve().parent.parent
-SAMPLE_BIT  = {'P5': 4, 'P4': 8}            # tPICsourceFlagNCAM_BOL bitmask
+SAMPLE_BIT  = {'P1': 1, 'P2': 2, 'P5': 4, 'P4': 8}   # tPICsourceFlagNCAM_BOL bitmask
+ALL_BITS    = 15
 PIC_FITS    = 'data/plato/LOPS2PICtarget2.2.0.1-t-fg-c-scv2.fits'
 FITS_NULL   = -2147483648
 # Open clusters marked on the map: name, RA, Dec (deg), approximate distance (pc)
@@ -85,7 +88,7 @@ COLUMNS = {
     'gmag':   ('<u2', 1e-3),     # Gaia G
     'age':    ('<u2', 1e-3),     # Gyr, Gaia DR3 FLAME
     'n_cam':  ('u1', 1.0),       # normal cameras observing the star (BOL)
-    'sample': ('u1', 1.0),       # 4 = P5, 8 = P4
+    'sample': ('u1', 1.0),       # bits: 1 = P1, 2 = P2, 4 = P5, 8 = P4
     'spt':    ('u1', 1.0),       # index into meta['spt_labels']
     'pic_id': ('<f8', 1.0),      # PICid (< 2^53, exact in float64)
     'gaia_id': ('<i8', 1.0),     # Gaia DR3 source_id (BigInt64 in the browser)
@@ -153,7 +156,7 @@ def main():
     import astropy.units as u
 
     parts = []
-    for key in ['P4', 'P5']:
+    for key in ['P4', 'P5', 'P1', 'P2']:
         f_ages = repo / 'data' / 'processed' / f'gaia_flame_ages_{key.lower()}.parquet'
         f_main = repo / 'data' / 'processed' / f'plato_{key}_stars.parquet'
         df = pd.read_parquet(f_main)
@@ -161,7 +164,10 @@ def main():
             ages = pd.read_parquet(f_ages)[['pic_id', 'source_id', 'age_flame']]
             df = df.drop(columns=[c for c in ['age_flame'] if c in df.columns]) \
                    .merge(ages, on='pic_id', how='left', validate='one_to_one')
+        if 'source_id' in df:            # nullable: P1/P2 have no FLAME file, and float64 would round the IDs
+            df['source_id'] = df['source_id'].astype('Int64')
         df['key'] = key
+        df['bits'] = SAMPLE_BIT[key]
         bad = (df['plato_sample_flag'].astype(int) & SAMPLE_BIT[key]) == 0
         if bad.any():
             raise ValueError(f'{key}: {bad.sum()} stars without the {key} sample bit')
@@ -169,14 +175,17 @@ def main():
         print(f'{key}: {len(df):,} stars from {f_main.relative_to(repo)}')
     stars = pd.concat(parts, ignore_index=True)
 
-    # A star flagged as both P4 and P5 would appear once with both bits set.
-    dup = stars['pic_id'].duplicated(keep=False)
-    if dup.any():
-        flags = stars.groupby('pic_id')['plato_sample_flag'].agg(lambda s: int(np.bitwise_or.reduce(s.astype(int))))
-        stars = stars.drop_duplicates('pic_id').copy()
-        stars['plato_sample_flag'] = stars['pic_id'].map(flags)
-    n_both = int(dup.sum() // 2)
-    sample_bits = (stars['plato_sample_flag'].astype(int) & (SAMPLE_BIT['P4'] | SAMPLE_BIT['P5'])).values
+    # A star in several sample files (P2 ⊂ P1; P4 ∩ P5 would be one too) appears
+    # once, with the bits of every file that contains it.  The first row is kept
+    # (P4/P5 before P1/P2, so their FLAME source_id survives).
+    bits = stars.groupby('pic_id')['bits'].agg(lambda s: int(np.bitwise_or.reduce(s.astype(int))))
+    stars = stars.drop_duplicates('pic_id').copy()
+    stars['bits'] = stars['pic_id'].map(bits)
+    sample_bits = stars['bits'].values.astype(np.uint8)
+    n_both = int(np.sum((sample_bits & 12) == 12))       # P4 ∩ P5
+    overlaps = {f'{a}&{b}': int(np.sum((sample_bits & SAMPLE_BIT[a] != 0) & (sample_bits & SAMPLE_BIT[b] != 0)))
+                for a, b in [('P1', 'P2'), ('P1', 'P5'), ('P2', 'P5'), ('P1', 'P4'), ('P4', 'P5')]}
+    print(f'{len(stars):,} distinct stars; overlaps {overlaps}')
 
     # ── Heliocentric Galactic Cartesian positions ──────────────────────────
     c = SkyCoord(ra=stars['ra'].values * u.deg, dec=stars['dec'].values * u.deg,
@@ -190,7 +199,8 @@ def main():
     checks = {}
     nan = np.full(len(stars), np.nan)
     e_d, plx, e_teff, e_mass, e_rad, gmag = nan.copy(), nan.copy(), nan.copy(), nan.copy(), nan.copy(), nan.copy()
-    gaia = stars['source_id'].values.astype(np.int64) if 'source_id' in stars else np.zeros(len(stars), np.int64)
+    has_sid = stars['source_id'].notna().values if 'source_id' in stars else np.zeros(len(stars), bool)
+    gaia = stars['source_id'].fillna(0).to_numpy(np.int64) if has_sid.any() else np.zeros(len(stars), np.int64)
     if pic is not None:
         r = pic.reindex(stars['pic_id'].values)
         if r['distance'].isna().any():
@@ -200,15 +210,14 @@ def main():
         checks['max_abs_glon_diff_deg'] = float(np.max(np.abs(dl * np.cos(np.radians(b)))))
         checks['max_abs_glat_diff_deg'] = float(np.max(np.abs(r['Glat'].values - b)))
         fl = r['tPICsourceFlagNCAM_BOL'].replace(FITS_NULL, 0).astype(int).values
-        checks['sample_bits_match_fits'] = bool(np.all((fl & 12) == sample_bits))
+        checks['sample_bits_match_fits'] = bool(np.all((fl & ALL_BITS) == sample_bits))
         e_d, plx = r['edistance'].to_numpy(float, copy=True), r['Plx'].to_numpy(float, copy=True)
         e_teff, e_mass, e_rad, gmag = (r[k].to_numpy(float, copy=True) for k in ('eTeff', 'eMass', 'eRadius', 'Gmag'))
         from_name = pd.to_numeric(r['StarName'].astype(str).str.replace('Gaia DR3 ', '', regex=False),
                                   errors='coerce')
-        if 'source_id' in stars:
-            checks['gaia_id_matches_flame_file'] = bool(np.all(from_name.values == gaia))
-        else:
-            gaia = from_name.fillna(0).astype(np.int64).values
+        if has_sid.any():
+            checks['gaia_id_matches_flame_file'] = bool(np.all(from_name.values[has_sid] == gaia[has_sid]))
+        gaia = np.where(has_sid, gaia, from_name.fillna(0).astype(np.int64).values)
         # the PIC uncertainties use FITS null sentinels / negatives for missing
         for a in (e_d, e_teff, e_mass, e_rad):
             a[(a <= 0) | (a > 1e6)] = np.nan
@@ -293,6 +302,7 @@ def main():
         n=int(len(stars)), layout=layout, raw_bytes=len(blob),
         samples={k: summary((sample_bits & bit) != 0, k) for k, bit in SAMPLE_BIT.items()},
         n_in_both=n_both,
+        overlaps=overlaps,
         clusters=clusters,
         spt_labels=labels, spt_teff=label_teff,
         sample_centroid=dict(l=float(np.degrees(np.arctan2(centre[1], centre[0])) % 360.),
@@ -303,13 +313,13 @@ def main():
         has_flame_ages=bool(np.isfinite(age).any()),
         provenance=dict(
             catalogue='PLATO Input Catalogue, targets (tPIC) for LOPS2, version 2.2.0.1 (Montalto et al. 2026)',
-            files=[f'data/processed/plato_{k}_stars.parquet' for k in ['P4', 'P5']]
+            files=[f'data/processed/plato_{k}_stars.parquet' for k in ['P4', 'P5', 'P1', 'P2']]
                   + ([PIC_FITS + ' (uncertainties, parallax, Gaia DR3 ID)'] if pic is not None else []),
             export_date=_dt.date.today().isoformat(),
             repo_commit=_git(repo, 'rev-parse', '--short', 'HEAD'),
             repo_data_uncommitted=bool(_git(repo, 'status', '--porcelain', '--',
-                                            'data/processed/plato_P4_stars.parquet',
-                                            'data/processed/plato_P5_stars.parquet')),
+                                            *[f'data/processed/plato_{k}_stars.parquet'
+                                              for k in ['P4', 'P5', 'P1', 'P2']])),
         ),
     )
     (out_dir / 'plato_stars_meta.json').write_text(json.dumps(meta, indent=1))

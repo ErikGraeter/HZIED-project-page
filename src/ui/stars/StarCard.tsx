@@ -2,10 +2,9 @@
 // exist in the export are listed; nothing is filled in.
 
 import type { StarRecord } from '../../stars/catalog';
-import { CLASS_COLORS, SAMPLE_COLORS } from '../../stars/StarMapView';
+import { CLASS_COLORS, SAMPLE_COLORS, SAMPLE_LABEL } from '../../stars/StarMapView';
 import { pc, pmSig } from './fmt';
 
-const SAMPLE_LABEL = { P4: 'P4 · M dwarfs', P5: 'P5 · FGK dwarfs and subgiants' } as const;
 
 export function StarCard({ s, onClose, onFocus, onStellar }: { s: StarRecord; onClose: () => void; onFocus: () => void; onStellar: () => void }) {
   const rows: [string, string][] = [

@@ -1,16 +1,18 @@
 // Summary statistics of the stars currently shown on the map: counts,
 // distances, class composition and three small stacked histograms.
 
-import { CLASSES } from '../../stars/catalog';
+import { CLASSES, SAMPLES, type SampleKey } from '../../stars/catalog';
 import type { Hist, Selection, Stats } from '../../stars/stats';
 import { CLASS_COLORS, SAMPLE_COLORS } from '../../stars/StarMapView';
 import { int, pc } from './fmt';
 
 const W = 264, H = 54;
+/** Stacking order of the histograms, bottom → top. */
+const STACK: SampleKey[] = ['P5', 'P4', 'P1', 'P2'];
 
 function Histogram({ h, label, unit, median, fmt }: { h: Hist; label: string; unit: string; median: number | null; fmt: (x: number) => string }) {
   const n = h.edges.length - 1;
-  const tot = h.counts.P4.map((v, k) => v + h.counts.P5[k]);
+  const tot = h.counts.P4.map((_, k) => STACK.reduce((a, s) => a + h.counts[s][k], 0));
   const max = Math.max(1, ...tot);
   const bw = W / n;
   const x = (v: number) => ((v - h.edges[0]) / (h.edges[n] - h.edges[0])) * W;
@@ -21,11 +23,15 @@ function Histogram({ h, label, unit, median, fmt }: { h: Hist; label: string; un
       <svg viewBox={`0 -2 ${W} ${H + 16}`} role="img" aria-label={`${label} histogram`}>
         {tot.map((t, k) => {
           if (!t) return null;
-          const h4 = (h.counts.P4[k] / max) * H, h5 = (h.counts.P5[k] / max) * H;
+          let y = H;
           return (
             <g key={k}>
-              {h5 > 0 && <rect x={k * bw + 0.5} width={Math.max(bw - 1, 0.6)} y={H - h5} height={h5} fill={SAMPLE_COLORS.P5} opacity={0.82} />}
-              {h4 > 0 && <rect x={k * bw + 0.5} width={Math.max(bw - 1, 0.6)} y={H - h5 - h4} height={h4} fill={SAMPLE_COLORS.P4} opacity={0.88} />}
+              {STACK.map((s) => {
+                const hs = (h.counts[s][k] / max) * H;
+                if (hs <= 0) return null;
+                y -= hs;
+                return <rect key={s} x={k * bw + 0.5} width={Math.max(bw - 1, 0.6)} y={y} height={hs} fill={SAMPLE_COLORS[s]} opacity={s === 'P5' ? 0.82 : 0.88} />;
+              })}
             </g>
           );
         })}
@@ -41,12 +47,10 @@ function Histogram({ h, label, unit, median, fmt }: { h: Hist; label: string; un
 
 export function StatsPanel({ stats, sel }: { stats: Stats; sel: Selection }) {
   const s = stats;
-  const both = sel.sample === 'both';
-  const clsTotal = CLASSES.map((k) => {
-    if (!sel.classes[k]) return 0;
-    const c = s.classCounts[k];
-    return sel.sample === 'P4' ? c.P4 : sel.sample === 'P5' ? c.P5 : c.P4 + c.P5;
-  });
+  const on = SAMPLES.filter((k) => sel.samples[k]);
+  // P2 ⊂ P1: with both chosen, the histograms split P1 into P2 and the rest
+  const stacked = STACK.filter((k) => sel.samples[k]).reverse();
+  const clsTotal = CLASSES.map((k) => (sel.classes[k] ? s.classCounts[k] : 0));
   const shown = clsTotal.reduce((a, b) => a + b, 0) || 1;
   return (
     <aside className="map-panel map-right" aria-live="polite">
@@ -54,10 +58,9 @@ export function StatsPanel({ stats, sel }: { stats: Stats; sel: Selection }) {
         <span className="v">{int(s.n)}</span>
         <span className="k">stars shown</span>
       </div>
-      {both && (
+      {on.length > 1 && (
         <div className="st-split">
-          <span><i className="sw" style={{ background: SAMPLE_COLORS.P4 }} />P4 {int(s.bySample.P4)}</span>
-          <span><i className="sw" style={{ background: SAMPLE_COLORS.P5 }} />P5 {int(s.bySample.P5)}</span>
+          {on.map((k) => <span key={k}><i className="sw" style={{ background: SAMPLE_COLORS[k] }} />{k} {int(s.bySample[k])}</span>)}
         </div>
       )}
       {s.d && (
@@ -92,7 +95,11 @@ export function StatsPanel({ stats, sel }: { stats: Stats; sel: Selection }) {
           <Histogram h={s.hist.mass} label="Mass" unit="M☉" median={s.massMedian} fmt={(v) => v.toFixed(2)} />
         </>
       )}
-      {both && <p className="st-foot">Histograms are stacked: <i className="sw" style={{ background: SAMPLE_COLORS.P4 }} />P4 on top of <i className="sw" style={{ background: SAMPLE_COLORS.P5 }} />P5. Bar heights are counts.</p>}
+      {stacked.length > 1 && (
+        <p className="st-foot">Histograms are stacked, top to bottom: {stacked.map((k, j) => (
+          <span key={k}>{j > 0 && ', '}<i className="sw" style={{ background: SAMPLE_COLORS[k] }} />{k === 'P1' && sel.samples.P2 ? 'P1 without P2' : k}</span>
+        ))}. Bar heights are counts.</p>
+      )}
     </aside>
   );
 }

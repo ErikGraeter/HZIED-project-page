@@ -1,4 +1,4 @@
-// three.js star map of the PLATO P4/P5 samples around the Sun.
+// three.js star map of the PLATO P1/P2/P4/P5 samples around the Sun.
 //
 // Scene units are parsecs.  The scene axes are the heliocentric Galactic
 // axes with the Galactic plane horizontal:
@@ -7,7 +7,8 @@
 //
 // All stars are one THREE.Points draw call.  Sample/class filtering and the
 // colour mode are shader uniforms, so changing them costs nothing; each of the
-// 8 sample × class groups fades in and out smoothly.
+// 16 sample × class groups fades in and out smoothly.  Sample groups: P4, P5,
+// P1 without P2, P2 (P2 ⊂ P1; drawn in the P1 colour when only P1 is chosen).
 //
 // Stellar view: the camera flies into the sample to one star and orbits it at
 // AU scale (OrbitControls at distances of ~10⁻⁵ pc).  The star's illustrative
@@ -17,14 +18,23 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { BIT, CLASSES, type SpClass, type StarCatalog } from './catalog';
-import { sampleBits, type Selection } from './stats';
+import type { Selection } from './stats';
 import { mulberry32 } from '../model/rng';
 import { SystemView } from './SystemView';
 import { AU_PC, type StellarSystem } from './system';
 
 export type ColorMode = 'sample' | 'class';
 
-export const SAMPLE_COLORS = { P4: '#ff8a5b', P5: '#86b9ff' } as const;
+export const SAMPLE_COLORS = { P4: '#ff8a5b', P5: '#86b9ff', P1: '#6fdcb4', P2: '#d99bff' } as const;
+export const SAMPLE_LABEL = {
+  P4: 'P4 · M dwarfs',
+  P5: 'P5 · FGK dwarfs and subgiants',
+  P1: 'P1 · bright FGK stars, V ≤ 11',
+  P2: 'P2 · brightest FGK stars, V ≤ 8.5',
+} as const;
+/** Sample group of each star (index into uColS): P4, P5, P1 without P2, P2. */
+const GROUP_SAMPLE = ['P4', 'P5', 'P1', 'P2'] as const;
+const N_GROUPS = 16;
 /** Main-class colours, roughly the blackbody hue of each class. */
 export const CLASS_COLORS: Record<SpClass, string> = { M: '#ff6a4a', K: '#ffae63', G: '#ffe6a6', F: '#dfe7ff' };
 
@@ -47,8 +57,8 @@ const easeInOut = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u 
 const STAR_VERT = /* glsl */ `
   attribute float aGroup;
   attribute float aSize;
-  uniform float uVis[8];
-  uniform vec3 uColS[2];
+  uniform float uVis[16];
+  uniform vec3 uColS[4];
   uniform vec3 uColC[4];
   uniform float uMode;
   uniform float uScale;
@@ -155,8 +165,8 @@ export class StarMapView {
   private labels: { el: HTMLElement; pos: THREE.Vector3; grid: boolean }[] = [];
   private pos: Float32Array;           // scene coordinates of every star
   private group: Uint8Array;
-  private vis = new Float32Array(8);
-  private visTarget = new Float32Array(8);
+  private vis = new Float32Array(N_GROUPS);
+  private visTarget = new Float32Array(N_GROUPS);
   private raf = 0;
   private last = 0;
   private tween: Tween | null = null;
@@ -196,7 +206,8 @@ export class StarMapView {
     for (let i = 0; i < n; i++) {
       const x = cat.xyz[3 * i], y = cat.xyz[3 * i + 1], z = cat.xyz[3 * i + 2];
       this.pos[3 * i] = x; this.pos[3 * i + 1] = z; this.pos[3 * i + 2] = -y;
-      const g = (cat.sample[i] & BIT.P4 ? 0 : 4) + cat.cls[i];
+      const sb = cat.sample[i];
+      const g = 4 * (sb & BIT.P4 ? 0 : sb & BIT.P5 ? 1 : sb & BIT.P2 ? 3 : 2) + cat.cls[i];
       this.group[i] = g; grp[i] = g;
       // marker size grows weakly with luminosity (L = R² T⁴); visual only
       const L = cat.radius[i] ** 2 * (cat.teff[i] / 5778) ** 4;
@@ -212,7 +223,7 @@ export class StarMapView {
       transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
       uniforms: {
         uVis: { value: Array.from(this.vis) },
-        uColS: { value: [rgb(SAMPLE_COLORS.P4), rgb(SAMPLE_COLORS.P5)] },
+        uColS: { value: GROUP_SAMPLE.map((k) => rgb(SAMPLE_COLORS[k])) },
         uColC: { value: CLASSES.map((k) => rgb(CLASS_COLORS[k])) },
         uMode: { value: 0 },
         uScale: { value: 1 },
@@ -576,11 +587,12 @@ export class StarMapView {
   }
 
   setSelection(sel: Selection, opts: { frame: boolean; intro?: boolean }) {
-    const bits = sampleBits(sel.sample);
-    for (let g = 0; g < 8; g++) {
-      const sOk = (g < 4 ? BIT.P4 : BIT.P5) & bits;
-      this.visTarget[g] = sOk && sel.classes[CLASSES[g % 4]] ? 1 : 0;
+    const S = sel.samples;
+    const sampleOk = [S.P4, S.P5, S.P1, S.P1 || S.P2];
+    for (let g = 0; g < N_GROUPS; g++) {
+      this.visTarget[g] = sampleOk[g >> 2] && sel.classes[CLASSES[g % 4]] ? 1 : 0;
     }
+    (this.mat.uniforms.uColS.value as THREE.Vector3[])[3].copy(rgb(SAMPLE_COLORS[S.P2 ? 'P2' : 'P1']));
     if (this.sel === null) this.vis.set(this.visTarget.map((v) => (opts.intro ? 0 : v)));
     this.sel = sel;
     if (this.selected >= 0 && !this.visTarget[this.group[this.selected]]) { this.select(-1); this.opts.onSelect(-1); }
@@ -963,9 +975,9 @@ export class StarMapView {
 
     // group fades
     const k = this.opts.reducedMotion ? 1 : 1 - Math.exp(-dt * (this.intro ? 1.6 : 7));
-    for (let g = 0; g < 8; g++) this.vis[g] += (this.visTarget[g] - this.vis[g]) * k;
+    for (let g = 0; g < N_GROUPS; g++) this.vis[g] += (this.visTarget[g] - this.vis[g]) * k;
     const u = this.mat.uniforms.uVis.value as number[];
-    for (let g = 0; g < 8; g++) u[g] = this.vis[g];
+    for (let g = 0; g < N_GROUPS; g++) u[g] = this.vis[g];
 
     // hover picking (not while dragging)
     if (this.pointer.dirty && this.pointer.inside && !this.down) {

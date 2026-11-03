@@ -177,12 +177,18 @@ errors the predicted sample shows the step at 9.8σ. The null test stays at
 
 ## PLATO stellar samples page (`#samples`)
 
-A second tab shows the real P4 and P5 target stars in 3D around the Sun.
+A second tab shows the real P4 and P5 target stars in 3D around the Sun; the bright samples P1 and P2
+can be switched on for comparison.
 
 * **Stars**: the tPIC LOPS2 targets (v2.2.0.1, Montalto et al. 2026) flagged as P4 / P5
   (`tPICsourceFlagNCAM_BOL` bits 3 / 2) after the pipeline's stellar quality cuts, i.e.
   exactly the pipeline's stellar input `data/processed/plato_P4_stars.parquet` (13 102 M dwarfs)
   and `plato_P5_stars.parquet` (158 285 FGK dwarfs/subgiants). No star is in both samples.
+* **P1 / P2** (bits 0 / 1; `plato_P1_stars.parquet`, 9 665 FGK stars with V ≤ 11, and `plato_P2_stars.parquet`,
+  605 with V ≤ 8.5, same cuts as P5): not used by the pipeline, shown for context. P2 ⊂ P1; in the tPIC flags
+  P1 shares no star with P5 or P4. The sample selector toggles P4 / P5 / P1 / P2 independently (double-click:
+  only that sample; default P4 + P5). A P2 star is drawn in the P2 colour when P2 is on, otherwise in the P1
+  colour, and is counted once in the statistics (histograms stack P1 without P2 and P2).
 * **Positions**: catalogue RA, Dec and distance → heliocentric Galactic Cartesian coordinates
   (X → Galactic centre, Y → l = 90°, Z → NGP) with astropy; the Galactic plane is the
   horizontal plane of the map. Checked against the catalogue's Glon/Glat (< 10⁻⁵ deg) and,
@@ -289,7 +295,7 @@ src/
 scripts/      export_hzied_data.py, export_plato_stars.py
 tests/        model.test.ts — pipeline reproduction, exact evidence, posterior fit, line-up, seamless loop
               rv.test.ts    — projection, σ_M/M, ρ_norm and Welch test against the pipeline / scipy
-              stars.test.ts — P4/P5 membership, coordinates, statistics of the stellar-sample export
+              stars.test.ts — P1/P2/P4/P5 membership, coordinates, statistics of the stellar-sample export
 ```
 
 The steam envelope is a ray-marched exponential atmosphere whose extinction is

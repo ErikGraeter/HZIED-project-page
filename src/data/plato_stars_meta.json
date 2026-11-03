@@ -1,5 +1,5 @@
 {
- "n": 171387,
+ "n": 181052,
  "layout": {
   "x": {
    "offset": 0,
@@ -7,108 +7,128 @@
    "scale": 1.0
   },
   "y": {
-   "offset": 685552,
+   "offset": 724208,
    "dtype": "f4",
    "scale": 1.0
   },
   "z": {
-   "offset": 1371104,
+   "offset": 1448416,
    "dtype": "f4",
    "scale": 1.0
   },
   "d": {
-   "offset": 2056656,
+   "offset": 2172624,
    "dtype": "u2",
    "scale": 0.02
   },
   "e_d": {
-   "offset": 2399432,
+   "offset": 2534728,
    "dtype": "f4",
    "scale": 1.0
   },
   "plx": {
-   "offset": 3084984,
+   "offset": 3258936,
    "dtype": "u2",
    "scale": 0.004
   },
   "teff": {
-   "offset": 3427760,
+   "offset": 3621040,
    "dtype": "u2",
    "scale": 1.0
   },
   "e_teff": {
-   "offset": 3770536,
+   "offset": 3983144,
    "dtype": "u2",
    "scale": 1.0
   },
   "mass": {
-   "offset": 4113312,
+   "offset": 4345248,
    "dtype": "u2",
    "scale": 0.0001
   },
   "e_mass": {
-   "offset": 4456088,
+   "offset": 4707352,
    "dtype": "u2",
    "scale": 0.0001
   },
   "radius": {
-   "offset": 4798864,
+   "offset": 5069456,
    "dtype": "u2",
    "scale": 0.0001
   },
   "e_rad": {
-   "offset": 5141640,
+   "offset": 5431560,
    "dtype": "u2",
    "scale": 0.0001
   },
   "vmag": {
-   "offset": 5484416,
+   "offset": 5793664,
    "dtype": "u2",
    "scale": 0.001
   },
   "pmag": {
-   "offset": 5827192,
+   "offset": 6155768,
    "dtype": "u2",
    "scale": 0.001
   },
   "gmag": {
-   "offset": 6169968,
+   "offset": 6517872,
    "dtype": "u2",
    "scale": 0.001
   },
   "age": {
-   "offset": 6512744,
+   "offset": 6879976,
    "dtype": "u2",
    "scale": 0.001
   },
   "n_cam": {
-   "offset": 6855520,
+   "offset": 7242080,
    "dtype": "u1",
    "scale": 1.0
   },
   "sample": {
-   "offset": 7026912,
+   "offset": 7423136,
    "dtype": "u1",
    "scale": 1.0
   },
   "spt": {
-   "offset": 7198304,
+   "offset": 7604192,
    "dtype": "u1",
    "scale": 1.0
   },
   "pic_id": {
-   "offset": 7369696,
+   "offset": 7785248,
    "dtype": "f8",
    "scale": 1.0
   },
   "gaia_id": {
-   "offset": 8740792,
+   "offset": 9233664,
    "dtype": "i8",
    "scale": 1.0
   }
  },
- "raw_bytes": 10111888,
+ "raw_bytes": 10682080,
  "samples": {
+  "P1": {
+   "n": 9665,
+   "d_median": 168.18099975585938,
+   "d_min": 8.890219688415527,
+   "d_max": 485.8030090332031,
+   "teff_median": 6013.78886090433,
+   "n_flagged": 12900,
+   "rel_e_d_median": 0.00240493147954711,
+   "d_plx_ratio_median": 0.9983786199267197
+  },
+  "P2": {
+   "n": 605,
+   "d_median": 62.97560119628906,
+   "d_min": 8.890219688415527,
+   "d_max": 145.0019989013672,
+   "teff_median": 6066.13349054391,
+   "n_flagged": 868,
+   "rel_e_d_median": 0.0012861906806083325,
+   "d_plx_ratio_median": 0.9995103345965762
+  },
   "P5": {
    "n": 158285,
    "d_median": 453.76800537109375,
@@ -131,6 +151,13 @@
   }
  },
  "n_in_both": 0,
+ "overlaps": {
+  "P1&P2": 605,
+  "P1&P5": 0,
+  "P2&P5": 0,
+  "P1&P4": 0,
+  "P4&P5": 0
+ },
  "clusters": [
   {
    "name": "NGC 2516",
@@ -139,7 +166,7 @@
    "z": -110.94699167705696,
    "d": 407.5750622931974,
    "n_selected": 176,
-   "n_expected_field": 36.4375,
+   "n_expected_field": 36.6875,
    "radius_pc": 7.658636534827616
   }
  ],
@@ -238,13 +265,13 @@
   6510.0
  ],
  "sample_centroid": {
-  "l": 255.5204778529679,
-  "b": -21.09886083908094
+  "l": 255.52364235249303,
+  "b": -21.254543746499746
  },
  "frame": "Galactic, heliocentric; X \u2192 Galactic centre, Y \u2192 l = 90\u00b0, Z \u2192 NGP; pc",
  "checks": {
   "max_abs_distance_diff_pc": 0.0,
-  "max_abs_glon_diff_deg": 6.383847012696344e-06,
+  "max_abs_glon_diff_deg": 8.383030237567071e-06,
   "max_abs_glat_diff_deg": 2.5763158681968434e-06,
   "sample_bits_match_fits": true,
   "gaia_id_matches_flame_file": true
@@ -256,9 +283,11 @@
   "files": [
    "data/processed/plato_P4_stars.parquet",
    "data/processed/plato_P5_stars.parquet",
+   "data/processed/plato_P1_stars.parquet",
+   "data/processed/plato_P2_stars.parquet",
    "data/plato/LOPS2PICtarget2.2.0.1-t-fg-c-scv2.fits (uncertainties, parallax, Gaia DR3 ID)"
   ],
-  "export_date": "2026-10-19",
+  "export_date": "2026-11-03",
   "repo_commit": "bb97456",
   "repo_data_uncommitted": true
  }
