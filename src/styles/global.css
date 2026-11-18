@@ -568,3 +568,27 @@ table.prov td { color: var(--ink-2); }
 .sys-planets .sw.ring { background: none; border: 1px dashed var(--warm-white); width: 9px; height: 9px; }
 .sys-panel .st-foot { margin: 12px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .sc-btns { display: flex; gap: 6px; }
+
+/* measurement-error section */
+.err-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 24px; padding: 14px 0; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line); }
+.err-ctl { display: flex; flex-direction: column; }
+.err-ctl .ctl-k { margin-bottom: 6px; }
+.err-ctl .seg button:disabled { cursor: default; font-style: italic; }
+.err-draw { display: flex; align-items: center; gap: 6px; }
+.err-draw .btn:disabled { opacity: 0.35; cursor: default; }
+.err-k { font-family: var(--mono); font-size: 12px; color: var(--ink); min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
+.err-models { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 22px; padding: 14px 0 6px; margin-bottom: 22px; }
+.err-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-2); min-width: 0; }
+.err-field small { color: var(--faint); font-size: 11px; }
+.err-field select { width: 100%; min-width: 0; }
+.err-note { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--muted); }
+.err-card h4 { line-height: 1.45; }
+.err-meta { font-weight: 400; color: var(--ink-2); font-family: var(--mono); font-size: 12px; }
+.err-stat { margin-left: 12px; font-family: var(--mono); font-size: 13px; color: var(--hot-soft); font-weight: 500; white-space: nowrap; }
+.err-cols { margin-top: 30px; }
+.err-table tbody tr { cursor: pointer; }
+.err-table tbody tr.on td { color: var(--ink); background: rgba(246, 236, 222, 0.06); }
+.err-table td:not(:first-child), .err-table th:not(:first-child) { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+.err-prose { margin-top: 16px; font-size: 13.5px; }
+.err-foot { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+@media (max-width: 860px) { .err-models { grid-template-columns: minmax(0, 1fr); } }

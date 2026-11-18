@@ -175,6 +175,33 @@ median 3σ at N ≈ 100 (2.6σ at N = 79, P(≥3σ) = 33 %); pessimistic follow-
 errors the predicted sample shows the step at 9.8σ. The null test stays at
 ≈ 0σ.
 
+## Measurement-error section (`#errors`, below “RV follow-up”)
+
+One fixed PLATO population in true values (P1 + P2 + P4 + P5, LOPS2, 2-yr mission, population seed 8,
+`age_mode='sampled'`, 0.5–5 M⊕, depth ≥ 50 ppm, non-grazing transits, AGNI inflation without DL21,
+wrr = 0.005, f_rgh = 1; 163 planets) is observed again and again with the measurement uncertainties of
+the pipeline. Each draw adds Gaussian noise once, as `hzied_utils.add_measurement_noise` and
+`pipeline._apply_mass_noise` do (R_obs ≥ 0.5 R⊕, S_obs ≥ 1 W m⁻², in density space M_obs clipped at
+0.5 M⊕ and dropped above 5 M⊕, ρ = ρ⊕ M_obs/R_obs³); draw n is reproducible.
+
+| Preset | σ_R | σ_S | σ_M |
+|---|---|---|---|
+| No errors | 0 | 0 | 0 |
+| Mission goal | 3 % | 5 % | 10 % |
+| Optimistic | per sample (P1 1 %, P2 0.8 %, P4 4 %, P5 3 %) | 5 % | RV, σ_RV = 0.5 m/s, N_RV = 1000 |
+| Pessimistic | per-planet model `conservative` | PIC errors propagated (`stellar_parameters`) | RV, σ_RV = 1 m/s, N_RV = 100 |
+
+Each of σ_R, σ_S and σ_M can also be chosen separately (per-planet radius models `optimistic`,
+`nominal`, `conservative`; σ_S `requirements`). Radius or density space; the Welch t-test at
+S_thresh (one-sided, as `magma_ocean_ttest`, split at the measured S) can be switched on and off and is
+also run over 300 draws (histogram of the significance). Code: `src/model/errors.ts`,
+`src/ui/errors/ErrorsSection.tsx`.
+
+```bash
+# in the bioverse-hzied conda environment; reads the repository, writes only src/data/hzied_errors.json
+python scripts/export_error_scenarios.py --repo <path-to-HZIED-repository> [--pop-seed 8]
+```
+
 ## PLATO stellar samples page (`#samples`)
 
 A second tab shows the real P4 and P5 target stars in 3D around the Sun; the bright samples P1 and P2

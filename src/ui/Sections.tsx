@@ -5,6 +5,10 @@ import { inflationFactor } from '../model/inflation';
 import { EvidenceVsN, InflationCurves, OlrSchematic, RadiusDistributions } from './Charts';
 import { signed } from './format';
 import { RvSection } from './rv/RvSection';
+import { ErrorsSection } from './errors/ErrorsSection';
+import { loadErrors } from '../data';
+
+const errorsData = loadErrors();
 
 interface Props { data: HziedData; model: ModelState; reducedMotion: boolean }
 
@@ -131,9 +135,12 @@ export function Sections({ data, model, reducedMotion }: Props) {
       {/* ── 4. RV follow-up → normalized density → required sample size ──── */}
       <RvSection data={data} reducedMotion={reducedMotion} />
 
-      {/* ── 5. Methods ───────────────────────────────────────────────────── */}
+      {/* ── 5. One population, many measurements: measurement-error scenarios ── */}
+      {errorsData && <ErrorsSection data={errorsData} reducedMotion={reducedMotion} />}
+
+      {/* ── 6. Methods ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="methods">
-        <SectionHead num="05 · Methods" id="methods" title="Research & methodology"
+        <SectionHead num={errorsData ? "06 · Methods" : "05 · Methods"} id="methods" title="Research & methodology"
           lede="Population synthesis with Bioverse, a physical inflation model, realistic survey selection, and Bayesian hypothesis testing." />
         <div className="pipeline">
           <div className="pipe-step"><div className="n">01 · GENERATOR</div><h4>Stars → planets</h4><p>Host stars from Gaia (GCNS) or the PLATO Input Catalogue; planets from Bergsten et al. (2022) occurrence rates; masses and rocky radii from Zeng et al. (2016). <code>create_planets_bergsten</code></p></div>
@@ -165,7 +172,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
 
       {/* ── References ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="refs">
-        <SectionHead num="06 · References" id="refs" title="References" lede="Key papers behind the model and the test." />
+        <SectionHead num={errorsData ? "07 · References" : "06 · References"} id="refs" title="References" lede="Key papers behind the model and the test." />
         <ul className="refs">
           <li className="key"><span className="au">Schlecker, M., Apai, D., Lichtenberg, T., et al. 2024</span>, <span className="ti">Bioverse: The Habitable Zone Inner Edge Discontinuity as an Imprint of Runaway Greenhouse Climates on Exoplanet Demographics</span>, PSJ 5, 3. <a href="https://doi.org/10.3847/PSJ/ad0d10">doi</a></li>
           <li className="key"><span className="au">Turbet, M., Ehrenreich, D., Lovis, C., Bolmont, E., Fauchez, T. 2019</span>, <span className="ti">The runaway greenhouse radius inflation effect</span>, A&A 628, A12. <a href="https://doi.org/10.1051/0004-6361/201935585">doi</a></li>
