@@ -1,8 +1,7 @@
-import { useMemo } from 'react';
 import type { HziedData } from '../model/types';
-import { computeModel, defaultParams, type ModelState } from '../model/compute';
+import { defaultParams, type ModelState } from '../model/compute';
 import { inflationFactor } from '../model/inflation';
-import { EvidenceVsN, InflationCurves, OlrSchematic, RadiusDistributions } from './Charts';
+import { InflationCurves, OlrSchematic, RadiusDistributions } from './Charts';
 import { signed } from './format';
 import { RvSection } from './rv/RvSection';
 import { ErrorsSection } from './errors/ErrorsSection';
@@ -29,11 +28,6 @@ export function Sections({ data, model, reducedMotion }: Props) {
   const infl1 = 100 * (inflationFactor(1, fid.wrr, data.tables) - 1);
   const infl05 = 100 * (inflationFactor(0.5, fid.wrr, data.tables) - 1);
   const infl3 = 100 * (inflationFactor(3, fid.wrr, data.tables) - 1);
-  const evCurves = useMemo(() => data.samples.map((s) => {
-    const mm = computeModel(data, { ...defaultParams(data), sample: s.meta.key });
-    const bySrc = mm.planets.reduce<Record<string, number>>((a, p) => { a[p.src] = (a[p.src] ?? 0) + 1; return a; }, {});
-    return { label: `${s.meta.label.replace(' (P4 + P5)', '')} (${mm.planets.length})`, seq: mm.seq, fit: mm.fit, n: mm.planets.length, bySrc };
-  }), [data]);
   const hot = model.planets.filter((p) => p.S_abs > model.params.S_thresh);
   const cold = model.planets.length - hot.length;
   const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / Math.max(v.length, 1);
@@ -102,45 +96,20 @@ export function Sections({ data, model, reducedMotion }: Props) {
         <div className="cols">
           <div className="prose">
             <p><strong>PLATO</strong> (PLAnetary Transits and Oscillations of stars) monitors large fields of bright stars with 26 cameras for years at a time. Its long baselines reach small planets on temperate orbits, and bright hosts allow precise stellar parameters, ages from asteroseismology, and radial-velocity follow-up for masses (Rauer et al. 2014, 2016).</p>
-            <p>The thesis replaces the artificial nearby-star population of Schlecker et al. (2024) with real stars from the <strong>PLATO Input Catalogue</strong> (the P4 M dwarfs and the P5 FGK dwarfs, analysed together) and asks how many planets PLATO must deliver before the HZIED is detected, or ruled out. In the most optimistic detection scenario on this page (5-yr mission, transits down to 60 ppm, 0.5–20 M⊕) the two samples together yield about {evCurves[1]?.n ?? 200} small planets. Where these host stars are in space is shown on the <a href="#samples">PLATO stellar samples</a> page.</p>
-            <p>Because PLATO's sample grows during the mission, the analysis is <strong>sequential</strong>: the evidence is updated as planets arrive, and the cold side is the bottleneck, because temperate planets on long orbits are the hardest to find. The figure shows how a toy version of this evidence grows with sample size for both populations on this page.</p>
           </div>
-          <EvidenceVsN curves={evCurves} />
+          <div className="prose">
+            <p>The thesis populates real stars of the <strong>PLATO Input Catalogue</strong> in the first field, LOPS2 (samples P1, P2, P4 and P5), with Bioverse planets and asks whether PLATO's measurements are precise enough to detect the HZIED. The cold side is the bottleneck: temperate planets on long orbits transit rarely and are the hardest to find. Where the host stars are in space is shown on the <a href="#samples">PLATO stellar samples</a> page.</p>
+          </div>
         </div>
-        <div className="cols" style={{ marginTop: 22 }}>
-          {data.samples.map((s, k) => {
-            const ev = evCurves[k];
-            const sm = s.meta.summary_default;
-            return (
-              <div className="card" key={s.meta.key}>
-                <h4>{s.meta.label}</h4>
-                <p className="card-sub">{s.meta.description}</p>
-                <div className="stat-row">
-                  <div className="stat"><div className="k">Planets</div><div className="v">{sm.n_observable || ev.n}</div></div>
-                  <div className="stat"><div className="k">Hot / cold</div><div className="v">{sm.n_hot}<small>/ {sm.n_cold}</small></div></div>
-                  <div className="stat"><div className="k">Toy ln ΔZ</div><div className="v">{signed(ev.fit.lnK, 1)}</div></div>
-                </div>
-                <p className="card-sub" style={{ marginTop: 10, marginBottom: 0 }}>
-                  {Object.keys(ev.bySrc).length > 1
-                    ? `P5 FGK dwarfs: ${ev.bySrc.P5 ?? 0} planets · P4 M dwarfs: ${ev.bySrc.P4 ?? 0} planets · radius precision 3 % / 4 %.`
-                    : `Radius precision ${(s.meta.sigma_R * 100).toFixed(0)} %.`}
-                  {' '}Best-fit threshold {Math.round(ev.fit.best.S)} W m⁻² (68 %: {Math.round(ev.fit.sQ[0])}–{Math.round(ev.fit.sQ[2])}).
-                </p>
-              </div>
-            );
-          })}
-        </div>
+        {errorsData && <ErrorsSection data={errorsData} reducedMotion={reducedMotion} />}
       </section>
 
       {/* ── 4. RV follow-up → normalized density → required sample size ──── */}
       <RvSection data={data} reducedMotion={reducedMotion} />
 
-      {/* ── 5. One population, many measurements: measurement-error scenarios ── */}
-      {errorsData && <ErrorsSection data={errorsData} reducedMotion={reducedMotion} />}
-
-      {/* ── 6. Methods ───────────────────────────────────────────────────── */}
+      {/* ── 5. Methods ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="methods">
-        <SectionHead num={errorsData ? "06 · Methods" : "05 · Methods"} id="methods" title="Research & methodology"
+        <SectionHead num="05 · Methods" id="methods" title="Research & methodology"
           lede="Population synthesis with Bioverse, a physical inflation model, realistic survey selection, and Bayesian hypothesis testing." />
         <div className="pipeline">
           <div className="pipe-step"><div className="n">01 · GENERATOR</div><h4>Stars → planets</h4><p>Host stars from Gaia (GCNS) or the PLATO Input Catalogue; planets from Bergsten et al. (2022) occurrence rates; masses and rocky radii from Zeng et al. (2016). <code>create_planets_bergsten</code></p></div>
@@ -172,7 +141,7 @@ export function Sections({ data, model, reducedMotion }: Props) {
 
       {/* ── References ───────────────────────────────────────────────────── */}
       <section className="section" aria-labelledby="refs">
-        <SectionHead num={errorsData ? "07 · References" : "06 · References"} id="refs" title="References" lede="Key papers behind the model and the test." />
+        <SectionHead num="06 · References" id="refs" title="References" lede="Key papers behind the model and the test." />
         <ul className="refs">
           <li className="key"><span className="au">Schlecker, M., Apai, D., Lichtenberg, T., et al. 2024</span>, <span className="ti">Bioverse: The Habitable Zone Inner Edge Discontinuity as an Imprint of Runaway Greenhouse Climates on Exoplanet Demographics</span>, PSJ 5, 3. <a href="https://doi.org/10.3847/PSJ/ad0d10">doi</a></li>
           <li className="key"><span className="au">Turbet, M., Ehrenreich, D., Lovis, C., Bolmont, E., Fauchez, T. 2019</span>, <span className="ti">The runaway greenhouse radius inflation effect</span>, A&A 628, A12. <a href="https://doi.org/10.1051/0004-6361/201935585">doi</a></li>

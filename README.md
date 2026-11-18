@@ -175,7 +175,7 @@ median 3σ at N ≈ 100 (2.6σ at N = 79, P(≥3σ) = 33 %); pessimistic follow-
 errors the predicted sample shows the step at 9.8σ. The null test stays at
 ≈ 0σ.
 
-## Measurement-error section (`#errors`, below “RV follow-up”)
+## Measurement errors (`#errors`, in section 03 “Testing the HZIED with PLATO”)
 
 One fixed PLATO population in true values (P1 + P2 + P4 + P5, LOPS2, 2-yr mission, population seed 8,
 `age_mode='sampled'`, 0.5–5 M⊕, depth ≥ 50 ppm, non-grazing transits, AGNI inflation without DL21,

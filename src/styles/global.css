@@ -569,7 +569,8 @@ table.prov td { color: var(--ink-2); }
 .sys-panel .st-foot { margin: 12px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .sc-btns { display: flex; gap: 6px; }
 
-/* measurement-error section */
+/* measurement errors (part of the PLATO section) */
+.err-block .rv-head2 { margin-top: 64px; }
 .err-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 24px; padding: 14px 0; border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line); }
 .err-ctl { display: flex; flex-direction: column; }
 .err-ctl .ctl-k { margin-bottom: 6px; }

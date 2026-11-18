@@ -72,7 +72,6 @@ export function App() {
             <a href="#signature">Signature</a>
             <a href="#plato">PLATO</a>
             <a href="#rv">RV follow-up</a>
-            <a href="#errors">Errors</a>
             <a href="#methods">Methods</a>
             <a href="#refs">References</a>
           </nav>

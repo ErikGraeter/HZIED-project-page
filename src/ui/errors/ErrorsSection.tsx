@@ -1,4 +1,4 @@
-// Section: one PLATO population, observed many times with the measurement
+// Part of section 03 (PLATO): one PLATO population, observed many times with the measurement
 // uncertainties of the thesis (no errors / mission goal / optimistic /
 // pessimistic), with an optional Welch t-test at the runaway threshold.
 
@@ -75,13 +75,10 @@ export function ErrorsSection({ data, reducedMotion }: { data: ErrorsData; reduc
   ].join(', ');
 
   return (
-    <section className="section err-section" aria-labelledby="errors">
-      <div className="section-head">
-        <div className="section-num">05 · Measurement errors</div>
-        <div>
-          <h2 id="errors">One population, many measurements</h2>
-          <p className="lede">The planets below are one simulated PLATO yield in true values. Each draw adds the measurement uncertainties of a scenario once. Drawing again shows how much the HZIED step, and the t-test that looks for it, depends on the noise alone.</p>
-        </div>
+    <div className="err-block" aria-labelledby="errors">
+      <div className="rv-head2">
+        <h3 id="errors">One population, many measurements</h3>
+        <p>The planets below are one simulated PLATO yield in true values. Each draw adds the measurement uncertainties of a scenario once. Drawing again shows how much the HZIED step, and the t-test that looks for it, depends on the noise alone.</p>
       </div>
 
       <div className="err-controls" role="group" aria-label="Measurement-error scenario">
@@ -175,7 +172,7 @@ export function ErrorsSection({ data, reducedMotion }: { data: ErrorsData; reduc
           </div>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
 
